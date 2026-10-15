@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M0 — scaffold). Not usable yet; follow along or star the repo.
+> **Status:** early development (M1 — ingestion). Not usable yet; follow along or star the repo.
 
 ## Why
 
@@ -30,8 +30,36 @@ Requires [uv](https://docs.astral.sh/uv/) and git.
 cd backend
 uv sync                      # creates .venv and installs everything
 uv run acr corpus fetch flask  # clones Flask 3.1.3 (the demo corpus) into data/corpora
+uv run acr ingest flask      # chunks + symbol graph + commit history -> data/indexes/flask
 uv run poe check             # lint, format check, type check, tests
 ```
+
+`acr ingest` also takes a path to any local git repo: `uv run acr ingest D:\path\to\repo`.
+
+## What ingestion produces
+
+Plain JSONL files you can open and grep:
+
+| File | Contents |
+|---|---|
+| `chunks.jsonl` | Functions/methods (long ones split with overlap), class and module outlines with bodies collapsed, doc sections with heading breadcrumbs, one changelog entry per version |
+| `symbols.jsonl` | Modules, classes, functions, methods, module/class-level variables — with signature, first docstring paragraph, decorators and exact line spans |
+| `edges.jsonl` | `contains`, `calls`, `inherits`, `decorated_by`, `imports` — each labelled with **how** it was resolved |
+| `commits.jsonl` | Full history: subject, body, author, date and touched files |
+| `manifest.json` | Counts, including the resolution breakdown below |
+
+Static analysis of a dynamic language can't see everything, so every edge says how sure it is:
+
+| Resolution | Meaning |
+|---|---|
+| `exact` | Followed imports, re-exports, enclosing scopes, or `self`/`super()` through the class hierarchy |
+| `receiver` | The object is known (e.g. the `request_started` signal), the method called on it is not |
+| `heuristic` | The only symbol in the repo with that name |
+| `ambiguous` | A few same-named candidates — one edge each |
+| `external` | Lives outside the repo (stdlib, Werkzeug, …) |
+| `unresolved` | Nothing static analysis can see (attributes of local variables, dynamic dispatch) |
+
+Language support is a plugin (`languages/base.py`); Python is the only one in v1.
 
 ## Roadmap
 

@@ -25,9 +25,16 @@ class Settings(BaseSettings):
     budget_max_seconds: float = 60.0
 
     @property
+    def _data_root(self) -> Path:
+        return self.data_dir if self.data_dir.is_absolute() else REPO_ROOT / self.data_dir
+
+    @property
     def corpora_dir(self) -> Path:
-        path = self.data_dir if self.data_dir.is_absolute() else REPO_ROOT / self.data_dir
-        return path / "corpora"
+        return self._data_root / "corpora"
+
+    @property
+    def indexes_dir(self) -> Path:
+        return self._data_root / "indexes"
 
 
 @lru_cache

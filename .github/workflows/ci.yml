@@ -24,4 +24,6 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
+      - name: Fetch Flask corpus (enables the integration tests)
+        run: uv run acr corpus fetch flask
       - run: uv run poe check
