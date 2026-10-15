@@ -1,0 +1,56 @@
+[project]
+name = "agentic-code-rag"
+version = "0.0.1"
+description = "Ask questions about a codebase and get answers you can check."
+license = "MIT"
+authors = [{ name = "Sourish Chakraborty" }]
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "typer>=0.15",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "poethepoet>=0.31",
+]
+
+[project.scripts]
+acr = "agentic_rag.cli:app"
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentic_rag"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: hits the real Anthropic API (spends credit; never run in CI)"]
+addopts = "-m 'not live'"
+
+[tool.poe.tasks]
+lint = "ruff check src tests"
+fmt = "ruff format src tests"
+fmt-check = "ruff format --check src tests"
+typecheck = "mypy"
+test = "pytest"
+check = ["lint", "fmt-check", "typecheck", "test"]

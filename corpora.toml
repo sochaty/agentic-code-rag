@@ -1,0 +1,10 @@
+# Corpora the project is developed and evaluated against.
+# Fetched with `uv run acr corpus fetch <name>` into data/corpora/<name>.
+# Pinned to a tag so eval results stay reproducible; full history is kept
+# because the git_history tool needs it.
+
+[flask]
+url = "https://github.com/pallets/flask.git"
+ref = "3.1.3"
+license = "BSD-3-Clause"
+languages = ["python"]
