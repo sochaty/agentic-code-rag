@@ -49,7 +49,11 @@ uv run acr symbol flask full_dispatch_request --rel callees                 # sy
 uv run acr history flask Flask.make_response                                # git_history (follows the lines)
 uv run acr read   flask src/flask/app.py --start 900 --end 940              # read_source
 uv run acr ask    flask "what does preprocess_request do?"                  # naive RAG baseline (calls the model)
+uv run acr explore flask "who ends up calling handle_user_exception?"       # agent: route + plan + run tools
 ```
+
+`acr explore` shows the agent's reasoning so far: the router's decision, each planning round's
+sub-questions and tool calls, and what every call returned. Synthesizing an answer comes in M5.
 
 ## Model providers
 

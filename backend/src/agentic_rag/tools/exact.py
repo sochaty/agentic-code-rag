@@ -1,5 +1,6 @@
 """exact_search: literal matches across every tracked text file (code, docs, config, templates)."""
 
+import re
 from pathlib import PurePosixPath
 
 from pydantic import BaseModel
@@ -46,11 +47,18 @@ def exact_search(
     include_tests: bool = True,
     case_sensitive: bool | None = None,
     path_prefix: str | None = None,
+    whole_word: bool = False,
 ) -> GrepResult:
-    """Case-sensitive when the term has capitals (like ripgrep's smart case)."""
+    """Case-sensitive when the term has capitals (like ripgrep's smart case).
+
+    `whole_word` stops "limiter" from matching "delimiters".
+    """
     if case_sensitive is None:
         case_sensitive = term != term.lower()
-    needle = term if case_sensitive else term.lower()
+    pattern = re.compile(
+        rf"(?<!\w){re.escape(term)}(?!\w)" if whole_word else re.escape(term),
+        0 if case_sensitive else re.IGNORECASE,
+    )
 
     def sort_key(path: PurePosixPath) -> tuple[bool, str]:
         return is_test_path(path), path.as_posix()
@@ -68,7 +76,7 @@ def exact_search(
         matched = [
             GrepHit(path=path.as_posix(), line=n, text=line)
             for n, line in enumerate(lines, 1)
-            if needle in (line if case_sensitive else line.lower())
+            if pattern.search(line)
         ]
         if matched:
             files += 1

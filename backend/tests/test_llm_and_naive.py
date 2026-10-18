@@ -34,6 +34,7 @@ class FakeLLM:
         messages: Sequence[dict[str, Any]],
         max_tokens: int = 16000,
         effort: Effort | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Completion:
         self.calls.append({"model": model, "system": system, "messages": list(messages)})
         usage = Usage(input_tokens=1000, output_tokens=100, cost_usd=0.003, calls=1)

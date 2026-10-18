@@ -82,7 +82,8 @@ class GraphResult(BaseModel):
         if s.signature:
             out.append(f"  {s.signature}")
         if s.docstring:
-            out.append(f'  "{s.docstring}"')
+            summary = " ".join(s.docstring.split())  # one line: cheaper to read, for models too
+            out.append(f'  "{summary[:200]}{"..." if len(summary) > 200 else ""}"')
         if self.relation == "definition":
             return "\n".join(out)
         shown = (

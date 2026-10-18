@@ -112,6 +112,8 @@ class Completion(BaseModel):
 
 
 class LLM(Protocol):
+    """`json_schema`, when given, asks the provider to constrain the reply to that schema."""
+
     def complete(
         self,
         *,
@@ -120,6 +122,7 @@ class LLM(Protocol):
         messages: Sequence[dict[str, Any]],
         max_tokens: int = 16000,
         effort: Effort | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Completion: ...
 
 
@@ -137,6 +140,7 @@ class OpenAICompatibleLLM:
         messages: Sequence[dict[str, Any]],
         max_tokens: int = 16000,
         effort: Effort | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Completion:
         kwargs: dict[str, Any] = {
             "model": model,
@@ -146,6 +150,11 @@ class OpenAICompatibleLLM:
         }
         if effort:
             kwargs["reasoning_effort"] = effort
+        if json_schema:
+            kwargs["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "response", "schema": json_schema, "strict": True},
+            }
         response: Any = self.client.chat.completions.create(**kwargs)
 
         choice = response.choices[0]
@@ -183,6 +192,7 @@ class AnthropicLLM:
         messages: Sequence[dict[str, Any]],
         max_tokens: int = 16000,
         effort: Effort | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Completion:
         kwargs: dict[str, Any] = {
             "model": model,
@@ -190,8 +200,13 @@ class AnthropicLLM:
             "system": system,
             "messages": list(messages),
         }
+        output_config: dict[str, Any] = {}
         if effort:
-            kwargs["output_config"] = {"effort": effort}
+            output_config["effort"] = effort
+        if json_schema:
+            output_config["format"] = {"type": "json_schema", "schema": json_schema}
+        if output_config:
+            kwargs["output_config"] = output_config
         if model in _SERVER_FALLBACK:
             # On a policy decline the API re-runs the request on a fallback model in the same call.
             response: Any = self.client.beta.messages.create(

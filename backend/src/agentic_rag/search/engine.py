@@ -1,6 +1,7 @@
 """Hybrid retrieval over chunks: dense vectors (Qdrant) + BM25, merged by reciprocal rank fusion."""
 
 import json
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -70,6 +71,9 @@ class SearchEngine:
                 f"index embedded with {built['model']}, query embedder is {embedder.model_name}"
             )
         self._client = QdrantClient(path=str(vector_dir))
+        # Local-mode Qdrant and the ONNX session aren't safe to share across threads, and the
+        # agent runs tool calls in parallel; queries are fast, so a lock costs nothing.
+        self._lock = threading.Lock()
         self._bm25 = BM25Okapi([tokenize(document_text(c)) for c in chunks])
 
     def close(self) -> None:
@@ -85,12 +89,13 @@ class SearchEngine:
         must_not = (
             [] if include_tests else [FieldCondition(key="is_test", match=MatchValue(value=True))]
         )
-        points = self._client.query_points(
-            COLLECTION,
-            query=self.embedder.embed_query(query),
-            limit=k,
-            query_filter=Filter(must=must, must_not=must_not),
-        ).points
+        with self._lock:
+            points = self._client.query_points(
+                COLLECTION,
+                query=self.embedder.embed_query(query),
+                limit=k,
+                query_filter=Filter(must=must, must_not=must_not),
+            ).points
         # Skip ids that no longer exist (vectors left over from an older `--no-embed` re-index).
         return [
             Scored(self.by_id[str(p.payload["chunk_id"])], float(p.score))
