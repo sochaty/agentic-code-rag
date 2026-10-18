@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M1 — ingestion). Not usable yet; follow along or star the repo.
+> **Status:** early development (M2 — tools + naive baseline). The agent loop isn't built yet; follow along or star the repo.
 
 ## Why
 
@@ -30,11 +30,28 @@ Requires [uv](https://docs.astral.sh/uv/) and git.
 cd backend
 uv sync                      # creates .venv and installs everything
 uv run acr corpus fetch flask  # clones Flask 3.1.3 (the demo corpus) into data/corpora
-uv run acr ingest flask      # chunks + symbol graph + commit history -> data/indexes/flask
+uv run acr ingest flask      # chunks + symbol graph + history, then embeddings -> data/indexes/flask
 uv run poe check             # lint, format check, type check, tests
 ```
 
 `acr ingest` also takes a path to any local git repo: `uv run acr ingest D:\path\to\repo`.
+Embedding runs locally on CPU (FastEmbed, `bge-small-en-v1.5`, ~67 MB download once). For Flask's
+2,176 chunks that took 22 minutes on a laptop CPU (one-time per index); `--no-embed` skips it.
+
+## The tools
+
+Every tool works from the CLI today, and the agent will call the same functions:
+
+```bash
+uv run acr search flask "how are teardown functions run after a request"   # semantic_search (hybrid)
+uv run acr grep   flask SESSION_COOKIE_SAMESITE                             # exact_search
+uv run acr symbol flask full_dispatch_request --rel callees                 # symbol_graph
+uv run acr history flask Flask.make_response                                # git_history (follows the lines)
+uv run acr read   flask src/flask/app.py --start 900 --end 940              # read_source
+uv run acr ask    flask "what does preprocess_request do?"                  # naive RAG baseline (calls Claude)
+```
+
+`acr ask` needs `ANTHROPIC_API_KEY` in `.env` and spends a small amount of API credit per question.
 
 ## What ingestion produces
 

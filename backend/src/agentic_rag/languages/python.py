@@ -107,7 +107,9 @@ class _FileParser:
     def __init__(self, path: PurePosixPath, source: bytes, ctx: RepoContext) -> None:
         self.path = path
         self.posix = path.as_posix()
-        self.source = source
+        # Git on Windows checks out CRLF; normalise so docstring paragraphs split on blank lines.
+        self.source = source.replace(b"\r\n", b"\n")
+        source = self.source
         self.lines = source.decode("utf-8", errors="replace").splitlines()
         self.is_test = is_test_path(path)
         module = module_name(path, ctx.files)

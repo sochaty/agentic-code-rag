@@ -7,13 +7,18 @@ from typing import Annotated
 
 import typer
 
-from agentic_rag import __version__, corpus
+from agentic_rag import __version__, corpus, tools
 from agentic_rag.config import get_settings
 from agentic_rag.ingest import pipeline, store
+from agentic_rag.tools.graph import Relation
+from agentic_rag.tools.semantic import Scope
+from agentic_rag.workspace import VECTOR_DIR, Workspace
 
 app = typer.Typer(help="Agentic RAG over codebases.", no_args_is_help=True)
 corpus_app = typer.Typer(help="Manage the pinned corpora in corpora.toml.", no_args_is_help=True)
 app.add_typer(corpus_app, name="corpus")
+
+IndexName = Annotated[str, typer.Argument(help="Index name, e.g. flask.")]
 
 
 @app.command()
@@ -48,6 +53,9 @@ def ingest(
     name: Annotated[
         str | None, typer.Option(help="Index name (defaults to the corpus/folder name).")
     ] = None,
+    embed: Annotated[
+        bool, typer.Option(help="Also embed chunks for semantic search (downloads a model once).")
+    ] = True,
 ) -> None:
     """Build the chunk, symbol-graph and commit index for a repository."""
     settings = get_settings()
@@ -64,4 +72,80 @@ def ingest(
     out_dir = settings.indexes_dir / index_name
     store.save(index, out_dir)
     typer.echo(json.dumps(index.manifest, indent=2))
-    typer.echo(f"wrote {out_dir} in {time.perf_counter() - started:.1f}s")
+    typer.echo(f"indexed in {time.perf_counter() - started:.1f}s")
+    if embed:
+        from agentic_rag.search.embed import FastEmbedder
+        from agentic_rag.search.engine import build_vectors
+
+        started = time.perf_counter()
+        embedder = FastEmbedder(settings.embedding_model, settings.models_dir)
+        build_vectors(index.chunks, embedder, out_dir / VECTOR_DIR)
+        typer.echo(
+            f"embedded {len(index.chunks)} chunks with {embedder.model_name} "
+            f"in {time.perf_counter() - started:.1f}s"
+        )
+    typer.echo(f"wrote {out_dir}")
+
+
+@app.command()
+def search(
+    index: IndexName,
+    query: str,
+    scope: Annotated[Scope, typer.Option()] = "all",
+    k: int = 6,
+    tests: Annotated[bool, typer.Option(help="Include test files.")] = False,
+) -> None:
+    """semantic_search: find code and docs by meaning."""
+    ws = Workspace.open(index)
+    try:
+        typer.echo(tools.semantic_search(ws, query, scope, k, tests).render())
+    finally:
+        ws.close()
+
+
+@app.command()
+def grep(index: IndexName, term: str, k: int = 40) -> None:
+    """exact_search: literal matches across every tracked text file."""
+    typer.echo(tools.exact_search(Workspace.open(index), term, k).render())
+
+
+@app.command()
+def symbol(
+    index: IndexName,
+    name: str,
+    rel: Annotated[Relation, typer.Option(help="Which relationship to show.")] = "definition",
+) -> None:
+    """symbol_graph: a symbol's definition, callers, callees, members, or class hierarchy."""
+    typer.echo(tools.symbol_graph(Workspace.open(index), name, rel).render())
+
+
+@app.command()
+def history(index: IndexName, target: str, limit: int = 10) -> None:
+    """git_history: commits that touched a file, folder, or symbol."""
+    typer.echo(tools.git_history(Workspace.open(index), target, limit).render())
+
+
+@app.command()
+def read(index: IndexName, path: str, start: int = 1, end: int | None = None) -> None:
+    """read_source: a numbered line range from the repository."""
+    typer.echo(tools.read_source(Workspace.open(index), path, start, end).render())
+
+
+@app.command()
+def ask(
+    index: IndexName,
+    question: str,
+    k: Annotated[int, typer.Option(help="Chunks to retrieve.")] = 8,
+    model: Annotated[str | None, typer.Option(help="Defaults to ACR_MODEL_HEAVY.")] = None,
+) -> None:
+    """Answer with the naive single-pass RAG baseline. Calls the Claude API (spends credit)."""
+    from agentic_rag.llm import AnthropicLLM
+    from agentic_rag.naive import naive_answer
+
+    settings = get_settings()
+    ws = Workspace.open(index)
+    try:
+        answer = naive_answer(ws, question, AnthropicLLM(), model or settings.model_heavy, k)
+        typer.echo(answer.render())
+    finally:
+        ws.close()

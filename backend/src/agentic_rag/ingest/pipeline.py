@@ -87,6 +87,7 @@ def _manifest(
         resolution[edge.kind][edge.resolution] += 1
     return {
         "name": name,
+        "repo": str(repo.resolve()),
         "ref": _git_head(repo),
         "built_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "tool_version": __version__,
