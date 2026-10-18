@@ -136,21 +136,26 @@ def ask(
     index: IndexName,
     question: str,
     k: Annotated[int, typer.Option(help="Chunks to retrieve.")] = 8,
-    model: Annotated[str | None, typer.Option(help="Defaults to ACR_MODEL_HEAVY.")] = None,
+    model: Annotated[str | None, typer.Option(help="Defaults to the heavy model.")] = None,
 ) -> None:
-    """Answer with the naive single-pass RAG baseline. Calls the Claude API (spends credit)."""
+    """Answer with the naive single-pass RAG baseline. Calls the model API (spends credit)."""
     import anthropic
+    import openai
 
-    from agentic_rag.llm import AnthropicLLM
+    from agentic_rag.llm import ConfigError, make_llm
     from agentic_rag.naive import naive_answer
 
     settings = get_settings()
-    if settings.anthropic_api_key is None:
-        raise typer.BadParameter("set ANTHROPIC_API_KEY in .env (repo root) or the environment")
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    try:
+        llm = make_llm(settings)
+    except ConfigError as error:
+        raise typer.BadParameter(str(error)) from None
     ws = Workspace.open(index)
     try:
-        answer = naive_answer(ws, question, AnthropicLLM(client), model or settings.model_heavy, k)
+        answer = naive_answer(ws, question, llm, model or settings.heavy_model, k)
         typer.echo(answer.render())
+    except (openai.AuthenticationError, anthropic.AuthenticationError):
+        typer.echo(f"{settings.provider} rejected the API key (401). Check .env.", err=True)
+        raise typer.Exit(1) from None
     finally:
         ws.close()

@@ -48,10 +48,22 @@ uv run acr grep   flask SESSION_COOKIE_SAMESITE                             # ex
 uv run acr symbol flask full_dispatch_request --rel callees                 # symbol_graph
 uv run acr history flask Flask.make_response                                # git_history (follows the lines)
 uv run acr read   flask src/flask/app.py --start 900 --end 940              # read_source
-uv run acr ask    flask "what does preprocess_request do?"                  # naive RAG baseline (calls Claude)
+uv run acr ask    flask "what does preprocess_request do?"                  # naive RAG baseline (calls the model)
 ```
 
-`acr ask` needs `ANTHROPIC_API_KEY` in `.env` and spends a small amount of API credit per question.
+## Model providers
+
+Copy `.env.example` to `.env` (repo root). The default provider is **OpenAI** (`OPENAI_API_KEY`);
+set `ACR_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` to use Claude instead. Any Chat Completions
+server also works through the OpenAI provider — for example a free local model with
+[Ollama](https://ollama.com): `ACR_OPENAI_BASE_URL=http://localhost:11434/v1`.
+
+| Provider | Cheap roles (router, grader, rewriter) | Heavy roles (planner, synthesizer, verifier) |
+|---|---|---|
+| OpenAI (default) | `gpt-6-luna` | `gpt-6.1-sol` |
+| Anthropic | `claude-haiku-5-5` | `claude-sonnet-5-5` |
+
+`acr ask` prints tokens and cost for every question — roughly $0.03–0.05 with the default heavy model.
 
 ## What ingestion produces
 
