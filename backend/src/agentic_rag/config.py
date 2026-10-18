@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -17,6 +18,10 @@ class Settings(BaseSettings):
 
     data_dir: Path = REPO_ROOT / "data"
     corpora_file: Path = REPO_ROOT / "corpora.toml"
+
+    # Read from the environment or .env under its usual name (no ACR_ prefix). SecretStr keeps
+    # it out of reprs and logs.
+    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
 
     model_cheap: str = "claude-haiku-5-5"
     model_heavy: str = "claude-sonnet-5-5"

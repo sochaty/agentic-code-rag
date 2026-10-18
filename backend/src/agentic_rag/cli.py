@@ -139,13 +139,18 @@ def ask(
     model: Annotated[str | None, typer.Option(help="Defaults to ACR_MODEL_HEAVY.")] = None,
 ) -> None:
     """Answer with the naive single-pass RAG baseline. Calls the Claude API (spends credit)."""
+    import anthropic
+
     from agentic_rag.llm import AnthropicLLM
     from agentic_rag.naive import naive_answer
 
     settings = get_settings()
+    if settings.anthropic_api_key is None:
+        raise typer.BadParameter("set ANTHROPIC_API_KEY in .env (repo root) or the environment")
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
     ws = Workspace.open(index)
     try:
-        answer = naive_answer(ws, question, AnthropicLLM(), model or settings.model_heavy, k)
+        answer = naive_answer(ws, question, AnthropicLLM(client), model or settings.model_heavy, k)
         typer.echo(answer.render())
     finally:
         ws.close()
