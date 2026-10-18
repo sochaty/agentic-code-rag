@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,9 @@ import pytest
 from agentic_rag.ingest import pipeline
 from agentic_rag.ingest.models import Edge
 from agentic_rag.ingest.store import Index
+from agentic_rag.search.embed import HashEmbedder
+from agentic_rag.search.engine import build_vectors
+from agentic_rag.workspace import Workspace
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_repo"
 
@@ -38,6 +42,18 @@ def sample_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.fixture(scope="session")
 def sample_index(sample_repo: Path) -> Index:
     return pipeline.build(sample_repo, "sample")
+
+
+@pytest.fixture(scope="session")
+def sample_ws(
+    sample_index: Index, sample_repo: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[Workspace]:
+    """Workspace over the sample repo, embedded with the deterministic HashEmbedder."""
+    vectors = tmp_path_factory.mktemp("vectors")
+    build_vectors(sample_index.chunks, HashEmbedder(), vectors)
+    ws = Workspace(sample_index, sample_repo, vectors, HashEmbedder)
+    yield ws
+    ws.close()
 
 
 def edges_from(index: Index, src_qualname: str, kind: str) -> dict[str, Edge]:

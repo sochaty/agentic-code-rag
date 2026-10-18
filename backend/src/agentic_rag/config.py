@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     model_cheap: str = "claude-haiku-5-5"
     model_heavy: str = "claude-sonnet-5-5"
 
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+
     budget_max_tokens: int = 60_000
     budget_max_seconds: float = 60.0
 
@@ -35,6 +37,10 @@ class Settings(BaseSettings):
     @property
     def indexes_dir(self) -> Path:
         return self._data_root / "indexes"
+
+    @property
+    def models_dir(self) -> Path:
+        return self._data_root / "models"
 
 
 @lru_cache

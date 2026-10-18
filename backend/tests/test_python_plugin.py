@@ -90,3 +90,16 @@ def test_long_functions_split_into_overlapping_windows() -> None:
     assert parts[1].context == "def big(a, b)"
     assert parts[0].end_line - parts[1].start_line + 1 == OVERLAP_LINES
     assert parts[-1].end_line == 251
+
+
+def test_crlf_checkouts_parse_like_lf() -> None:
+    """Git on Windows checks files out with CRLF; docstrings must still split into paragraphs."""
+    source = (
+        'def f():\n    """First line\n    continues here.\n\n    Second paragraph.\n    """\n'
+    ).replace("\n", "\r\n")
+    parsed = PythonPlugin().parse(
+        P("m.py"), source.encode(), RepoContext(files=frozenset({P("m.py")}))
+    )
+    f = next(s for s in parsed.symbols if s.name == "f")
+    assert f.docstring == "First line\ncontinues here."
+    assert (f.start_line, f.end_line) == (1, 6)
