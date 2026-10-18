@@ -159,3 +159,39 @@ def ask(
         raise typer.Exit(1) from None
     finally:
         ws.close()
+
+
+@app.command()
+def explore(
+    index: IndexName,
+    question: str,
+    rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
+) -> None:
+    """Route the question, then plan and run tool calls round by round (no answer yet: M5)."""
+    import anthropic
+    import openai
+
+    from agentic_rag.agent.explore import explore as run_explore
+    from agentic_rag.llm import ConfigError, make_llm
+
+    settings = get_settings()
+    try:
+        llm = make_llm(settings)
+    except ConfigError as error:
+        raise typer.BadParameter(str(error)) from None
+    ws = Workspace.open(index)
+    try:
+        result = run_explore(
+            ws,
+            llm,
+            question,
+            cheap_model=settings.cheap_model,
+            heavy_model=settings.heavy_model,
+            max_rounds=rounds,
+        )
+        typer.echo(result.render())
+    except (openai.AuthenticationError, anthropic.AuthenticationError):
+        typer.echo(f"{settings.provider} rejected the API key (401). Check .env.", err=True)
+        raise typer.Exit(1) from None
+    finally:
+        ws.close()
