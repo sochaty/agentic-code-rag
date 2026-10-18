@@ -41,9 +41,12 @@ class Settings(BaseSettings):
     model_heavy: str | None = None
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
 
+    # Per-question limits for the agent loop. Whichever runs out first stops it.
     budget_max_tokens: int = 60_000
-    budget_max_seconds: float = 60.0
+    budget_max_seconds: float = 90.0
+    budget_max_cost_usd: float = 0.10
 
     @property
     def cheap_model(self) -> str:

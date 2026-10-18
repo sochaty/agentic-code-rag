@@ -53,7 +53,21 @@ uv run acr explore flask "who ends up calling handle_user_exception?"       # ag
 ```
 
 `acr explore` shows the agent's reasoning so far: the router's decision, each planning round's
-sub-questions and tool calls, and what every call returned. Synthesizing an answer comes in M5.
+sub-questions and tool calls, what every call returned, how semantic hits were graded, any
+query rewrites, the sufficiency check, and why the loop stopped. Synthesizing an answer comes
+in M5.
+
+How the loop keeps cost down:
+
+- **Grading:** a local cross-encoder (`ms-marco-MiniLM-L-6-v2`) scores every semantic hit.
+  Scores ≥ 3 are kept and ≤ −4 dropped for free; only the band in between goes to the cheap
+  model, in one batched call. Exact search, the call graph, history and source reads are
+  precise, so they aren't graded.
+- **Rewrite:** if every hit of a search is dropped, the cheap model rewrites the query once.
+- **Sufficiency:** after each round the cheap model checks whether every sub-question is
+  answered; if so the loop stops before paying for another planner call.
+- **Budget:** per-question limits on tokens, seconds and dollars (`ACR_BUDGET_MAX_TOKENS`,
+  `ACR_BUDGET_MAX_SECONDS`, `ACR_BUDGET_MAX_COST_USD`), checked before every model call.
 
 ## Model providers
 

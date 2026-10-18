@@ -6,8 +6,9 @@ import pytest
 from pydantic import ValidationError
 
 from agentic_rag import tools
+from agentic_rag.agent.budget import Budget
 from agentic_rag.agent.calls import ExactSearch, GitHistory, ReadSource, SymbolGraph, execute
-from agentic_rag.agent.explore import explore
+from agentic_rag.agent.explore import Exploration, explore
 from agentic_rag.agent.planner import Plan
 from agentic_rag.agent.router import Route
 from agentic_rag.agent.structured import complete_structured, extract_json, strict_schema
@@ -39,8 +40,8 @@ class ScriptedLLM:
         return Completion(text=self.replies.pop(0), model=model, usage=usage)
 
 
-def _route(route: str, category: str = "call_graph") -> str:
-    return json.dumps({"category": category, "route": route, "reason": "test"})
+def _route(category: str = "call_graph") -> str:
+    return json.dumps({"category": category, "reason": "test"})
 
 
 def _plan(steps: list[dict[str, Any]], done: bool = False) -> str:
@@ -84,7 +85,7 @@ def test_extract_json_tolerates_fences_and_prose() -> None:
 
 
 def test_structured_output_repairs_once_then_gives_up() -> None:
-    llm = ScriptedLLM('{"category": "nonsense"}', _route("agentic"))
+    llm = ScriptedLLM('{"category": "nonsense"}', _route())
     route, usage = complete_structured(
         llm, model="m", system="s", user="u", schema=Route, effort="low"
     )
@@ -130,37 +131,105 @@ def test_whole_word_exact_search(sample_ws: Workspace) -> None:
 
 # ---- explore loop -----------------------------------------------------------------------
 
+BIG = Budget(max_tokens=10**9, max_seconds=10**6, max_cost_usd=10**6)
+
+
+class ConstReranker:
+    model_name = "const"
+
+    def __init__(self, score: float) -> None:
+        self.value = score
+
+    def score(self, query: str, passages: Sequence[str]) -> list[float]:
+        return [self.value] * len(passages)
+
+
+def run(ws: Workspace, llm: ScriptedLLM, question: str, **kwargs: Any) -> Exploration:
+    return explore(
+        ws,
+        llm,
+        question,
+        cheap_model="c",
+        heavy_model="h",
+        budget=kwargs.pop("budget", BIG),
+        reranker=kwargs.pop("reranker", ConstReranker(5.0)),
+        **kwargs,
+    )
+
+
+def sufficiency(sufficient: bool) -> str:
+    return json.dumps(
+        {
+            "sub_answers": [
+                {
+                    "sub_question": "who calls normalize?",
+                    "answered": sufficient,
+                    "evidence": [1] if sufficient else [],
+                    "missing": "" if sufficient else "the next hop",
+                }
+            ],
+            "sufficient": sufficient,
+        }
+    )
+
 
 def test_direct_route_runs_one_search(sample_ws: Workspace) -> None:
-    llm = ScriptedLLM(_route("direct", "lookup"))
-    result = explore(sample_ws, llm, "what does normalize do?", cheap_model="c", heavy_model="h")
+    llm = ScriptedLLM(_route("lookup"))
+    result = run(sample_ws, llm, "what does normalize do?")
     assert [r.plan for r in result.rounds] == [None]
     assert result.observations[0].call.tool == "semantic_search"
+    assert result.stop_reason == "direct"
     assert llm.requests[0]["model"] == "c"  # router on the cheap model
 
 
 def test_agentic_rounds_feed_observations_back_and_skip_repeats(sample_ws: Workspace) -> None:
     llm = ScriptedLLM(
-        _route("agentic"),
+        _route(),
         _plan([CALLERS, GREP, CALLERS]),  # duplicate within a round
+        sufficiency(False),
         _plan([CALLERS, {**CALLERS, "symbol": "helper"}]),  # repeat from round 1 + one new
+        sufficiency(False),
         _plan([], done=True),
     )
-    result = explore(sample_ws, llm, "who calls normalize?", cheap_model="c", heavy_model="h")
+    result = run(sample_ws, llm, "who calls normalize?")
 
     assert [len(r.observations) for r in result.rounds] == [2, 1, 0]
     assert [r.skipped_repeats for r in result.rounds] == [1, 1, 0]
-    assert all(req["model"] == "h" for req in llm.requests[1:])  # planner on the heavy model
-    second_prompt = llm.requests[2]["messages"][0]["content"]
-    assert "Round: 2" in second_prompt and "shop.util.helper" in second_prompt
-    assert result.usage.calls == 4
+    assert [req["model"] for req in llm.requests] == ["c", "h", "c", "h", "c", "h"]
+    second_plan_prompt = llm.requests[3]["messages"][0]["content"]
+    assert "Round: 2" in second_plan_prompt and "shop.util.helper" in second_plan_prompt
+    assert result.usage.calls == 6
+    assert result.stop_reason == "planner_done"
     assert "planner: done" in result.render()
 
 
 def test_round_limit_stops_the_loop(sample_ws: Workspace) -> None:
     llm = ScriptedLLM(
-        _route("agentic"), _plan([CALLERS]), _plan([GREP]), _plan([{**GREP, "term": "helper"}])
+        _route(),
+        _plan([CALLERS]),
+        sufficiency(False),
+        _plan([GREP]),
+        _plan([{**GREP, "term": "helper"}]),
     )
-    result = explore(sample_ws, llm, "q", cheap_model="c", heavy_model="h", max_rounds=2)
+    result = run(sample_ws, llm, "q", max_rounds=2)
     assert len(result.rounds) == 2
-    assert llm.replies  # third plan never requested
+    assert result.stop_reason == "max_rounds"
+    assert len(llm.replies) == 1  # third plan never requested; no check after the last round
+
+
+def test_code_not_the_model_decides_the_route() -> None:
+    from agentic_rag.agent.router import Route
+
+    assert "route" not in strict_schema(Route)["properties"]  # the model can't pick it
+    direct = {"lookup", "conceptual"}
+    for category in [
+        "lookup",
+        "conceptual",
+        "identifier",
+        "call_graph",
+        "history",
+        "existence",
+        "multi_part",
+    ]:
+        route = Route.model_validate({"category": category, "reason": "r"})
+        assert route.route == ("direct" if category in direct else "agentic"), category

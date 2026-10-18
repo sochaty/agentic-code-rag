@@ -1,7 +1,9 @@
 """Router: is one search enough, or does this question need the agent loop?
 
-Runs on the cheap model at low effort — it costs a fraction of a cent and saves the full
-loop on easy questions.
+The cheap model only *classifies* the question; code maps the category to a route. Letting
+the model pick the route directly was unstable: the same "Does Flask have built-in rate
+limiting?" went agentic on one run and direct on the next, and a single search can't prove
+that something is absent.
 """
 
 from typing import Literal
@@ -21,22 +23,37 @@ Category = Literal[
     "multi_part",  # several of the above at once
 ]
 
+# Only these are answerable from one search; everything else needs the loop.
+DIRECT: frozenset[Category] = frozenset({"lookup", "conceptual"})
+
 
 class Route(BaseModel):
     category: Category
-    route: Literal["direct", "agentic"]
     reason: str
 
+    @property
+    def route(self) -> Literal["direct", "agentic"]:
+        return "direct" if self.category in DIRECT else "agentic"
 
-SYSTEM = """You triage questions about a software repository before anyone searches it.
 
-Pick the category, then the route:
-- "direct": a single search will almost certainly surface the answer in one place
-  (e.g. what one function does, a concept documented in one section).
-- "agentic": the answer needs relationships (callers, call chains, inheritance), history
-  (when/why something changed), proof of absence ("does X exist?" may need "no"), or
-  several facts combined.
-When unsure, choose "agentic". Keep the reason to one short sentence."""
+SYSTEM = """You classify questions about a software repository before anyone searches it.
+
+Categories:
+- lookup: what one specific function, class or file does, or where it is defined.
+  "What does preprocess_request do?"
+- conceptual: how a feature works, as explained in docs and code.
+  "How are teardown functions run after a request?"
+- identifier: about a specific config key, error message or name.
+  "What is SESSION_COOKIE_SAMESITE for?"
+- call_graph: who calls something, what it calls, or a class hierarchy.
+  "Who calls handle_user_exception?"
+- history: when or why something changed. "Why was X added?"
+- existence: whether something exists or is supported — the answer may be "no".
+  "Does Flask have built-in rate limiting?" "Is X supported?" "Can Flask do Y out of the box?"
+- multi_part: combines several of the above.
+
+If a question fits existence, history or call_graph, choose that over lookup or conceptual.
+Give a one-sentence reason."""
 
 
 def route_question(llm: LLM, model: str, question: str) -> tuple[Route, Usage]:
