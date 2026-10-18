@@ -10,6 +10,7 @@ from agentic_rag.ingest.models import Edge, Symbol
 from agentic_rag.ingest.store import Index
 from agentic_rag.search.embed import Embedder, FastEmbedder
 from agentic_rag.search.engine import SearchEngine
+from agentic_rag.search.rerank import CrossEncoderReranker, Reranker
 
 VECTOR_DIR = "vectors"
 
@@ -21,11 +22,14 @@ class Workspace:
         repo: Path,
         vector_dir: Path | None = None,
         embedder_factory: Callable[[], Embedder] | None = None,
+        reranker_factory: Callable[[], Reranker] | None = None,
     ) -> None:
         self.index = index
         self.repo = repo
         self._vector_dir = vector_dir
         self._embedder_factory = embedder_factory  # model loads lazily, on the first search
+        self._reranker_factory = reranker_factory
+        self._lines: dict[str, list[str] | None] = {}
         self.symbols_by_id: dict[str, Symbol] = {s.id: s for s in index.symbols}
         self.edges_from: dict[str, list[Edge]] = {}
         self.edges_to: dict[str, list[Edge]] = {}
@@ -44,10 +48,18 @@ class Workspace:
         if not repo.exists():  # index built on another machine; fall back to the corpora dir
             repo = settings.corpora_dir / name
         vector_dir = index_dir / VECTOR_DIR
-        if not vector_dir.exists():
-            return cls(index, repo)
-        model, cache = settings.embedding_model, settings.models_dir
-        return cls(index, repo, vector_dir, lambda: FastEmbedder(model, cache))
+        model, reranker, cache = (
+            settings.embedding_model,
+            settings.reranker_model,
+            settings.models_dir,
+        )
+        return cls(
+            index,
+            repo,
+            vector_dir if vector_dir.exists() else None,
+            (lambda: FastEmbedder(model, cache)) if vector_dir.exists() else None,
+            lambda: CrossEncoderReranker(reranker, cache),
+        )
 
     @cached_property
     def search(self) -> SearchEngine:
@@ -56,17 +68,39 @@ class Workspace:
         return SearchEngine(self.index.chunks, self._vector_dir, self._embedder_factory())
 
     @cached_property
+    def reranker(self) -> Reranker:
+        if self._reranker_factory is None:
+            raise RuntimeError("no reranker configured for this workspace")
+        return self._reranker_factory()
+
+    @cached_property
     def files(self) -> list[PurePosixPath]:
         return pipeline.discover(self.repo)
 
     def read_lines(self, path: PurePosixPath) -> list[str] | None:
-        full = self.repo / path
-        if not full.is_file():
-            return None
-        data = full.read_bytes()
-        if b"\0" in data[:8000]:
-            return None  # binary
-        return data.decode("utf-8", errors="replace").splitlines()
+        """File lines, cached (exact_search scans every file); None if missing or binary."""
+        key = path.as_posix()
+        if key not in self._lines:
+            full = self.repo / path
+            data = full.read_bytes() if full.is_file() else None
+            text = data is not None and b"\0" not in data[:8000]
+            self._lines[key] = (
+                data.decode("utf-8", errors="replace").splitlines() if data and text else None
+            )
+        return self._lines[key]
+
+    def warm_up(self) -> None:
+        """Load models and file contents now, so the first parallel round doesn't stall.
+
+        Without this, parallel exact_search calls each miss the cold file cache and read every
+        file at once (measured ~0.5s each locally, 3s+ with antivirus scanning cold reads).
+        """
+        if self._vector_dir is not None:
+            _ = self.search
+        if self._reranker_factory is not None:
+            _ = self.reranker
+        for path in self.files:
+            self.read_lines(path)
 
     def close(self) -> None:
         if "search" in self.__dict__:

@@ -36,7 +36,8 @@ Tools:
 {CATALOG}
 
 Strategy:
-- Break the question into sub-questions, then plan the calls that answer them.
+- Break the question into sub-questions this repository can answer (not questions about
+  third-party packages or other projects), then plan the calls that answer them.
 - "Who calls X" / "what does X call": symbol_graph first. Follow chains one hop per round.
 - "Does X exist / is X supported": exact_search several plausible spellings (whole_word
   where it avoids partial matches) plus semantic_search over docs. Absence needs evidence.

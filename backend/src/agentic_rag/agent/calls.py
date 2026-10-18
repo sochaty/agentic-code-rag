@@ -11,10 +11,12 @@ from pydantic import BaseModel, Field
 
 from agentic_rag import tools
 from agentic_rag.tools.graph import Relation
-from agentic_rag.tools.semantic import Scope
+from agentic_rag.tools.semantic import Scope, SearchResult
 from agentic_rag.workspace import Workspace
 
-MAX_OBSERVATION_CHARS = 6000  # keeps one noisy tool result from flooding the planner's context
+# Keeps one noisy search result from flooding the planner's context. read_source is exempt:
+# it's already bounded (200 lines), and clipping it once hid the exact lines a run needed.
+MAX_OBSERVATION_CHARS = 6000
 
 
 class SemanticSearch(BaseModel):
@@ -77,7 +79,8 @@ git_history(target, limit)
   Best for "when / why did X change". Pair with semantic_search(scope="changelog").
 read_source(path, start_line, end_line)
   Exact numbered lines (max 200). Use after another tool points at a location and you need
-  the actual code to answer or cite."""
+  the actual code to answer or cite. Read the symbol's own line range (other tools report
+  it) rather than a wide window around it."""
 
 
 def call_key(call: ToolCall) -> str:
@@ -89,6 +92,8 @@ class Observation(BaseModel):
     text: str
     error: str | None = None
     elapsed_ms: int
+    # semantic_search keeps its hits so grading can filter them and re-render `text`.
+    search: SearchResult | None = None
 
     @property
     def key(self) -> str:
@@ -101,12 +106,14 @@ class Observation(BaseModel):
 
 def execute(ws: Workspace, call: ToolCall) -> Observation:
     started = time.perf_counter()
+    search: SearchResult | None = None
     try:
         match call:
             case SemanticSearch():
-                text = tools.semantic_search(
+                search = tools.semantic_search(
                     ws, call.query, call.scope, include_tests=call.include_tests
-                ).render()
+                )
+                text = search.render()
             case ExactSearch():
                 text = tools.exact_search(
                     ws,
@@ -124,7 +131,10 @@ def execute(ws: Workspace, call: ToolCall) -> Observation:
         error = None
     except Exception as exc:  # a failing tool is an observation, not a crash
         text, error = "", f"{call.tool} failed: {type(exc).__name__}: {exc}"
-    if len(text) > MAX_OBSERVATION_CHARS:
-        text = text[:MAX_OBSERVATION_CHARS] + "\n... [truncated]"
+    if len(text) > MAX_OBSERVATION_CHARS and not isinstance(call, ReadSource):
+        text = (
+            text[:MAX_OBSERVATION_CHARS]
+            + "\n... [truncated: narrow the search, or read_source the exact lines you need]"
+        )
     elapsed = int((time.perf_counter() - started) * 1000)
-    return Observation(call=call, text=text, error=error, elapsed_ms=elapsed)
+    return Observation(call=call, text=text, error=error, elapsed_ms=elapsed, search=search)

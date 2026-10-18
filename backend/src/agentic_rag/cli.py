@@ -167,10 +167,11 @@ def explore(
     question: str,
     rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
 ) -> None:
-    """Route the question, then plan and run tool calls round by round (no answer yet: M5)."""
+    """Route, then plan, run, grade and check tool calls round by round (answer: M5)."""
     import anthropic
     import openai
 
+    from agentic_rag.agent.budget import Budget
     from agentic_rag.agent.explore import explore as run_explore
     from agentic_rag.llm import ConfigError, make_llm
 
@@ -187,6 +188,11 @@ def explore(
             question,
             cheap_model=settings.cheap_model,
             heavy_model=settings.heavy_model,
+            budget=Budget(
+                max_tokens=settings.budget_max_tokens,
+                max_seconds=settings.budget_max_seconds,
+                max_cost_usd=settings.budget_max_cost_usd,
+            ),
             max_rounds=rounds,
         )
         typer.echo(result.render())
