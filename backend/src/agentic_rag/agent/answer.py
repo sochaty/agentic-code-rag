@@ -19,12 +19,13 @@ from agentic_rag.agent.budget import Budget
 from agentic_rag.agent.calls import Observation, SemanticSearch, SymbolGraph
 from agentic_rag.agent.explore import Exploration
 from agentic_rag.agent.structured import complete_structured
-from agentic_rag.llm import LLM, Usage
+from agentic_rag.llm import LLM, Effort, Usage
 from agentic_rag.search.rerank import Reranker
 from agentic_rag.workspace import Workspace
 
 if TYPE_CHECKING:
     from agentic_rag.agent.events import Sink
+    from agentic_rag.agent.options import AgentOptions
 
 MAX_CITED_LINES = 80
 REPAIR_IDENTIFIERS = 2  # symbol lookups per unsupported claim
@@ -60,7 +61,8 @@ class Draft(BaseModel):
     insufficient: bool
 
 
-Verdict = Literal["supported", "partial", "unsupported"]
+CheckVerdict = Literal["supported", "partial", "unsupported"]  # what the verifier may say
+Verdict = CheckVerdict | Literal["unverified"]  # unverified: verification switched off
 
 
 class CheckedClaim(BaseModel):
@@ -72,7 +74,7 @@ class CheckedClaim(BaseModel):
 
 class _ClaimVerdict(BaseModel):
     claim: int
-    verdict: Verdict
+    verdict: CheckVerdict
     reason: str
 
 
@@ -97,7 +99,9 @@ class Answer(BaseModel):
         out = [self.direct_answer, ""]
         for claim in self.claims:
             refs = citation_labels(claim.citations)
-            mark = "" if claim.verdict == "supported" else " (partly supported)"
+            mark = {"supported": "", "partial": " (partly supported)"}.get(
+                claim.verdict, " (not verified)"
+            )
             out.append(f"- {claim.text}{mark}  [{refs}]")
         if self.caveats:
             out += ["", "Caveats:"] + [f"- {c}" for c in self.caveats]
@@ -157,7 +161,11 @@ def _observations_block(observations: list[Observation]) -> str:
 
 
 def synthesize(
-    llm: LLM, model: str, question: str, observations: list[Observation]
+    llm: LLM,
+    model: str,
+    question: str,
+    observations: list[Observation],
+    effort: Effort = "medium",
 ) -> tuple[Draft, Usage]:
     return complete_structured(
         llm,
@@ -165,7 +173,7 @@ def synthesize(
         system=SYNTHESIS_SYSTEM,
         user=f"Question: {question}\n\nObservations:\n\n{_observations_block(observations)}",
         schema=Draft,
-        effort="medium",
+        effort=effort,
         max_tokens=12000,
     )
 
@@ -306,6 +314,7 @@ def answer_question(
     max_rounds: int = 3,
     reranker: Reranker | None = None,
     sink: "Sink | None" = None,
+    options: "AgentOptions | None" = None,
 ) -> Answer:
     """Investigate, answer, verify and (once, if needed) repair. Runs the agent graph.
 
@@ -323,4 +332,5 @@ def answer_question(
         max_rounds=max_rounds,
         reranker=reranker,
         sink=sink,
+        **({"options": options} if options else {}),
     )

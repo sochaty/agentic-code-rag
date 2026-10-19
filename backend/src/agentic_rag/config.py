@@ -80,6 +80,10 @@ class Settings(BaseSettings):
         return self._data_root / "indexes"
 
     @property
+    def eval_dir(self) -> Path:
+        return REPO_ROOT / "eval"
+
+    @property
     def models_dir(self) -> Path:
         return self._data_root / "models"
 

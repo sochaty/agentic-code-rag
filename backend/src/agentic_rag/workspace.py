@@ -74,6 +74,20 @@ class Workspace:
         return self._reranker_factory()
 
     @cached_property
+    def _sections(self) -> dict[str, list[tuple[int, int, str]]]:
+        by_path: dict[str, list[tuple[int, int, str]]] = {}
+        for c in self.index.chunks:
+            if c.kind in ("doc", "changelog"):
+                by_path.setdefault(c.path, []).append((c.start_line, c.end_line, c.title))
+        return by_path
+
+    def section_at(self, path: PurePosixPath, line: int) -> str | None:
+        """The doc/changelog heading (breadcrumb) a line falls under, if any."""
+        spans = self._sections.get(path.as_posix(), [])
+        hits = [title for start, end, title in spans if start <= line <= end]
+        return hits[-1] if hits else None
+
+    @cached_property
     def files(self) -> list[PurePosixPath]:
         return pipeline.discover(self.repo)
 

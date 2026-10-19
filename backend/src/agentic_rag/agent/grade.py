@@ -166,13 +166,14 @@ def grade_and_maybe_rewrite(
     reranker: Reranker,
     question: str,
     obs: Observation,
+    allow_rewrite: bool = True,
 ) -> tuple[GradedSearch, Usage]:
     """Grade one semantic_search observation; if nothing survives, rewrite once and retry."""
     assert isinstance(obs.call, SemanticSearch) and obs.search is not None
     query = obs.call.query
     grades, usage = grade_hits(llm, cheap_model, reranker, question, query, obs.search.hits)
     graded = GradedSearch(observation=filter_observation(obs, grades), grades=grades)
-    if llm is None or any(g.verdict != "irrelevant" for g in grades):
+    if llm is None or not allow_rewrite or any(g.verdict != "irrelevant" for g in grades):
         return graded, usage
 
     new_query, rewrite_usage = rewrite_query(llm, cheap_model, question, query)

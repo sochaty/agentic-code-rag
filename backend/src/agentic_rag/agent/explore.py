@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from agentic_rag.agent.budget import Budget, BudgetTracker
 from agentic_rag.agent.calls import Observation, SemanticSearch
 from agentic_rag.agent.grade import HitGrade, grade_and_maybe_rewrite
+from agentic_rag.agent.options import FULL, AgentOptions
 from agentic_rag.agent.planner import Plan
 from agentic_rag.agent.router import Route
 from agentic_rag.agent.sufficiency import Sufficiency
@@ -132,7 +133,10 @@ def _grade_round(
     question: str,
     observations: list[Observation],
     tracker: BudgetTracker,
+    options: AgentOptions = FULL,
 ) -> tuple[list[Observation], list[HitGrade], list[Rewrite]]:
+    if options.grading == "off":
+        return observations, [], []
     graded_obs: list[Observation] = []
     grades: list[HitGrade] = []
     rewrites: list[Rewrite] = []
@@ -141,9 +145,10 @@ def _grade_round(
             graded_obs.append(obs)
             continue
         # Out of budget: the reranker still runs (it's free); borderline hits stay unverified.
-        allowed_llm = None if tracker.exhausted() else llm
+        # rerank_only: the same, by design: no model call for borderline hits, no rewrite.
+        allowed_llm = None if tracker.exhausted() or options.grading == "rerank_only" else llm
         result, usage = grade_and_maybe_rewrite(
-            ws, allowed_llm, cheap_model, reranker, question, obs
+            ws, allowed_llm, cheap_model, reranker, question, obs, options.rewrite
         )
         tracker.charge(usage)
         graded_obs.append(result.observation)
@@ -168,6 +173,7 @@ def explore(
     max_rounds: int = MAX_ROUNDS,
     reranker: Reranker | None = None,
     sink: "Sink | None" = None,
+    options: AgentOptions = FULL,
 ) -> Exploration:
     """Investigate without answering. Runs the agent graph (agent/graph.py) up to `explored`.
 
@@ -186,4 +192,5 @@ def explore(
         max_rounds=max_rounds,
         reranker=reranker,
         sink=sink,
+        options=options,
     )

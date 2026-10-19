@@ -20,6 +20,9 @@ web/dist/
 data/
 eval/results/*
 !eval/results/.gitkeep
+!eval/results/*/
+eval/results/*/*/
+!eval/results/*/results.md
 
 # Secrets
 .env

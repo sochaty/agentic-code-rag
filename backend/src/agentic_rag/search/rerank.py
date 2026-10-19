@@ -1,5 +1,6 @@
 """Cross-encoder rerankers: score (query, passage) pairs jointly, far sharper than embeddings."""
 
+import threading
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
@@ -25,9 +26,11 @@ class CrossEncoderReranker:
 
         self.model_name = model_name
         self._model = TextCrossEncoder(model_name, cache_dir=str(cache_dir))
+        self._lock = threading.Lock()  # one ONNX session, shared by parallel runs
 
     def score(self, query: str, passages: Sequence[str]) -> list[float]:
-        return [float(s) for s in self._model.rerank(query, list(passages))]
+        with self._lock:
+            return [float(s) for s in self._model.rerank(query, list(passages))]
 
 
 class OverlapReranker:
