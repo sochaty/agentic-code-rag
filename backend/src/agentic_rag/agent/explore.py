@@ -1,25 +1,26 @@
-"""The investigation loop (answering comes in M5):
+"""Investigation results and the per-round grading step.
 
-    route -> [plan -> run calls in parallel -> grade semantic hits (rewrite if all miss)
-              -> enough evidence?] x rounds
-
-Every model call first asks the budget; the run records why it stopped.
+The loop itself is the LangGraph state machine in agent/graph.py; `explore()` runs it up to
+the point where an answer would be written. The models here (Round, Exploration) are what a
+run produces, and `_grade_round` is the grading step its nodes share.
 """
 
-from concurrent.futures import ThreadPoolExecutor
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
 from agentic_rag.agent.budget import Budget, BudgetTracker
-from agentic_rag.agent.calls import Observation, SemanticSearch, ToolCall, call_key, execute
+from agentic_rag.agent.calls import Observation, SemanticSearch
 from agentic_rag.agent.grade import HitGrade, grade_and_maybe_rewrite
-from agentic_rag.agent.planner import Plan, plan_next
-from agentic_rag.agent.router import Route, route_question
-from agentic_rag.agent.sufficiency import Sufficiency, check_sufficiency
+from agentic_rag.agent.planner import Plan
+from agentic_rag.agent.router import Route
+from agentic_rag.agent.sufficiency import Sufficiency
 from agentic_rag.llm import LLM, Usage
 from agentic_rag.search.rerank import Reranker
 from agentic_rag.workspace import Workspace
+
+if TYPE_CHECKING:
+    from agentic_rag.agent.events import Sink
 
 MAX_ROUNDS = 3
 MAX_PARALLEL = 6
@@ -123,13 +124,6 @@ def _grade_summary(grades: list[HitGrade]) -> str:
     return text + (f", {unverified} unverified)" if unverified else ")")
 
 
-def _run_parallel(ws: Workspace, calls: list[ToolCall]) -> list[Observation]:
-    if not calls:
-        return []
-    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(calls))) as pool:
-        return list(pool.map(lambda call: execute(ws, call), calls))
-
-
 def _grade_round(
     ws: Workspace,
     llm: LLM,
@@ -173,85 +167,23 @@ def explore(
     tracker: BudgetTracker | None = None,
     max_rounds: int = MAX_ROUNDS,
     reranker: Reranker | None = None,
+    sink: "Sink | None" = None,
 ) -> Exploration:
-    """Pass `budget` for a fresh tracker, or `tracker` to share one with later steps."""
-    if tracker is None:
-        if budget is None:
-            raise ValueError("explore() needs a budget or a tracker")
-        tracker = BudgetTracker(budget)
-    ws.warm_up()  # load models up front, not inside the first parallel round
-    reranker = reranker or ws.reranker
-    route, usage = route_question(llm, cheap_model, question)
-    tracker.charge(usage)
+    """Investigate without answering. Runs the agent graph (agent/graph.py) up to `explored`.
 
-    def finish(rounds: list[Round], reason: StopReason) -> Exploration:
-        return Exploration(
-            question=question,
-            route=route,
-            rounds=rounds,
-            usage=tracker.usage,
-            stop_reason=reason,
-            budget=tracker.summary(),
-        )
+    Pass `budget` for a fresh tracker, or `tracker` to share one with later steps.
+    """
+    from agentic_rag.agent.graph import run_exploration
 
-    if route.route == "direct":
-        search = SemanticSearch(
-            tool="semantic_search", query=question, scope="all", include_tests=False
-        )
-        observations, grades, rewrites = _grade_round(
-            ws, llm, cheap_model, reranker, question, _run_parallel(ws, [search]), tracker
-        )
-        only = Round(
-            number=1, plan=None, observations=observations, grades=grades, rewrites=rewrites
-        )
-        return finish([only], "direct")
-
-    rounds: list[Round] = []
-    seen: set[str] = set()
-    gathered: list[Observation] = []
-    for number in range(1, max_rounds + 1):
-        if limit := tracker.exhausted():
-            return finish(rounds, _BUDGET_STOP[limit])
-        plan, plan_usage = plan_next(llm, heavy_model, question, route, gathered, number)
-        tracker.charge(plan_usage)
-
-        fresh: list[ToolCall] = []
-        for step in plan.steps:  # drop repeats, both of earlier rounds and within this one
-            key = call_key(step.call)
-            if key not in seen:
-                seen.add(key)
-                fresh.append(step.call)
-        results, grades, rewrites = _grade_round(
-            ws, llm, cheap_model, reranker, question, _run_parallel(ws, fresh), tracker
-        )
-        gathered += results
-        current = Round(
-            number=number,
-            plan=plan,
-            observations=results,
-            skipped_repeats=len(plan.steps) - len(fresh),
-            grades=grades,
-            rewrites=rewrites,
-        )
-        rounds.append(current)
-
-        if not fresh:
-            return finish(rounds, "planner_done" if plan.done else "no_new_calls")
-        if plan.done:
-            return finish(rounds, "planner_done")
-        if number == max_rounds:
-            break
-        if limit := tracker.exhausted():
-            return finish(rounds, _BUDGET_STOP[limit])
-        verdict, check_usage = check_sufficiency(
-            llm,
-            cheap_model,
-            question,
-            rounds[0].plan.sub_questions if rounds[0].plan else [],
-            gathered,
-        )
-        tracker.charge(check_usage)
-        current.sufficiency = verdict
-        if verdict.sufficient:
-            return finish(rounds, "sufficient")
-    return finish(rounds, "max_rounds")
+    return run_exploration(
+        ws,
+        llm,
+        question,
+        cheap_model=cheap_model,
+        heavy_model=heavy_model,
+        budget=budget,
+        tracker=tracker,
+        max_rounds=max_rounds,
+        reranker=reranker,
+        sink=sink,
+    )

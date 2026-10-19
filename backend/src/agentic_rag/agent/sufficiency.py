@@ -30,7 +30,8 @@ For each sub-question, decide if the numbered observations answer it with concre
 Cite the observation numbers. If not answered, say briefly what is missing.
 Rules:
 - Absence is answerable: if exact searches for several plausible spellings found nothing and
-  the docs search shows nothing relevant, "no, it isn't there" counts as answered.
+  the docs search shows nothing relevant, "no, it isn't there" counts as answered. The same
+  goes for "do the docs say X?": if the searched docs don't mention X, that is the answer.
 - A sub-question only knowledge outside this repository could answer (third-party packages,
   other projects) counts as answered; put "outside the repository" in missing.
 - Don't demand more than the question asks for.

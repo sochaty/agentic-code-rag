@@ -17,6 +17,8 @@ from agentic_rag.tools.semantic import Scope
 from agentic_rag.workspace import VECTOR_DIR, Workspace
 
 if TYPE_CHECKING:
+    from pydantic import BaseModel
+
     from agentic_rag.agent.budget import Budget
     from agentic_rag.config import Settings
     from agentic_rag.llm import LLM
@@ -181,6 +183,7 @@ def ask(
     question: str,
     naive: Annotated[bool, typer.Option(help="Use the single-pass RAG baseline instead.")] = False,
     trace: Annotated[bool, typer.Option(help="Also print how the agent investigated.")] = False,
+    stream: Annotated[bool, typer.Option(help="Print each event as JSON as it happens.")] = False,
     rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
     k: Annotated[int, typer.Option(help="Chunks to retrieve (--naive only).")] = 8,
 ) -> None:
@@ -201,6 +204,7 @@ def ask(
             heavy_model=settings.heavy_model,
             budget=_budget(settings),
             max_rounds=rounds,
+            sink=_print_event if stream else None,
         )
         if trace:
             typer.echo(answer.exploration.render())
@@ -228,3 +232,30 @@ def explore(
             max_rounds=rounds,
         )
         typer.echo(result.render())
+
+
+def _print_event(event: "BaseModel") -> None:
+    """One JSON line per event: the same stream the API sends over SSE."""
+    payload = event.model_dump(mode="json", exclude={"answer"})
+    typer.echo(json.dumps(payload)[:400])
+
+
+@app.command()
+def graph() -> None:
+    """Print the agent's LangGraph state machine as a Mermaid diagram."""
+    from agentic_rag.agent.graph import mermaid
+
+    typer.echo(mermaid())
+
+
+@app.command()
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+) -> None:
+    """Run the API server (models load once at startup). Settings come from .env."""
+    import uvicorn
+
+    from agentic_rag.api.app import create_app
+
+    uvicorn.run(create_app(get_settings()), host=host, port=port)

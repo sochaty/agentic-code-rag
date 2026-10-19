@@ -43,6 +43,17 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
 
+    # API server (`acr serve`).
+    index: str = "flask"  # which index the server answers questions about
+    cors_origins: list[str] = []  # e.g. ["https://sourishchakraborty.com"]
+    max_concurrent_runs: int = 3
+
+    # Public demo mode: tighter limits so a public URL can't run up a bill.
+    demo_mode: bool = False
+    demo_max_rounds: int = 2
+    demo_per_ip_per_hour: int = 10
+    demo_daily_questions: int = 200
+
     # Per-question limits for the agent loop. Whichever runs out first stops it.
     budget_max_tokens: int = 60_000
     budget_max_seconds: float = 90.0
