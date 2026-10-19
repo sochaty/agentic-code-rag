@@ -429,3 +429,46 @@ def eval_rejudge(
     (run_dir / "results.md").write_text(text, encoding="utf-8")
     typer.echo("")
     typer.echo(text)
+
+
+@app.command()
+def schema(
+    out: Annotated[Path | None, typer.Option(help="Write here instead of stdout.")] = None,
+) -> None:
+    """JSON Schema of everything the API sends; the web app generates its TypeScript from it."""
+    from pydantic import BaseModel
+
+    from agentic_rag.agent.answer import AnswerSummary
+    from agentic_rag.agent.events import Event
+    from agentic_rag.api.runs import RunSummary, SavedRun
+    from agentic_rag.naive import NaiveAnswer
+    from agentic_rag.tools.source import SourceRange
+
+    class ApiTypes(BaseModel):
+        event: Event
+        answer: AnswerSummary
+        naive_answer: NaiveAnswer
+        run: SavedRun
+        run_summary: RunSummary
+        source: SourceRange
+
+    def drop_field_titles(node: object) -> object:
+        # Pydantic titles every field; TypeScript generators turn each into a noisy alias
+        # (Seq1, At2, ...). Keep titles on models only, so interfaces get their real names.
+        if isinstance(node, list):
+            return [drop_field_titles(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        out = {k: drop_field_titles(v) for k, v in node.items()}
+        properties = out.get("properties")
+        if isinstance(properties, dict):
+            for prop in properties.values():
+                if isinstance(prop, dict):
+                    prop.pop("title", None)
+        return out
+
+    text = json.dumps(drop_field_titles(ApiTypes.model_json_schema(mode="serialization")), indent=2)
+    if out:
+        out.write_text(text + "\n", encoding="utf-8")
+    else:
+        typer.echo(text)

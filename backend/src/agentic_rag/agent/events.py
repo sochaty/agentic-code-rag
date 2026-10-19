@@ -23,6 +23,13 @@ class _Event(BaseModel):
     spent_tokens: int = 0
 
 
+class RunCreated(_Event):
+    """Sent by the API before the run starts: the id to share or reopen the run with."""
+
+    type: Literal["run_created"] = "run_created"
+    id: str
+
+
 class RunStarted(_Event):
     type: Literal["run_started"] = "run_started"
     question: str
@@ -113,7 +120,8 @@ class Failed(_Event):
 
 
 Event = Annotated[
-    RunStarted
+    RunCreated
+    | RunStarted
     | Routed
     | Planned
     | ToolStarted
