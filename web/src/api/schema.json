@@ -1,0 +1,1561 @@
+{
+  "$defs": {
+    "AnswerSummary": {
+      "description": "What API consumers get: the answer without the exploration (they saw it as events).",
+      "properties": {
+        "question": {
+          "type": "string"
+        },
+        "direct_answer": {
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/CheckedClaim"
+          },
+          "type": "array"
+        },
+        "removed": {
+          "items": {
+            "$ref": "#/$defs/CheckedClaim"
+          },
+          "type": "array"
+        },
+        "caveats": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "insufficient": {
+          "type": "boolean"
+        },
+        "repaired": {
+          "type": "boolean"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "latency_s": {
+          "type": "number"
+        },
+        "budget": {
+          "type": "string"
+        },
+        "route": {
+          "$ref": "#/$defs/RouteView"
+        },
+        "rounds": {
+          "type": "integer"
+        },
+        "stop_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "question",
+        "direct_answer",
+        "claims",
+        "removed",
+        "caveats",
+        "insufficient",
+        "repaired",
+        "usage",
+        "latency_s",
+        "budget",
+        "route",
+        "rounds",
+        "stop_reason"
+      ],
+      "title": "AnswerSummary",
+      "type": "object"
+    },
+    "Checked": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "checked",
+          "default": "checked",
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "sufficiency": {
+          "$ref": "#/$defs/Sufficiency"
+        }
+      },
+      "required": [
+        "round",
+        "sufficiency"
+      ],
+      "title": "Checked",
+      "type": "object"
+    },
+    "CheckedClaim": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "enum": [
+                "supported",
+                "partial",
+                "unsupported"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "unverified",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "citations",
+        "verdict",
+        "reason"
+      ],
+      "title": "CheckedClaim",
+      "type": "object"
+    },
+    "Citation": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "code",
+            "commit",
+            "search"
+          ],
+          "type": "string"
+        },
+        "observation": {
+          "type": "integer"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "observation",
+        "path",
+        "start_line",
+        "end_line",
+        "sha"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "ExactSearch": {
+      "properties": {
+        "tool": {
+          "const": "exact_search",
+          "type": "string"
+        },
+        "term": {
+          "type": "string"
+        },
+        "whole_word": {
+          "type": "boolean"
+        },
+        "path_prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "include_tests": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tool",
+        "term",
+        "whole_word",
+        "path_prefix",
+        "include_tests"
+      ],
+      "title": "ExactSearch",
+      "type": "object"
+    },
+    "ExplorationDone": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "exploration_done",
+          "default": "exploration_done",
+          "type": "string"
+        },
+        "stop_reason": {
+          "type": "string"
+        },
+        "rounds": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stop_reason",
+        "rounds"
+      ],
+      "title": "ExplorationDone",
+      "type": "object"
+    },
+    "Failed": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "failed",
+          "default": "failed",
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "Failed",
+      "type": "object"
+    },
+    "Finished": {
+      "description": "The last event of every run. `answer` is the full Answer JSON when one was written.",
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "finished",
+          "default": "finished",
+          "type": "string"
+        },
+        "stop_reason": {
+          "type": "string"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "stop_reason"
+      ],
+      "title": "Finished",
+      "type": "object"
+    },
+    "GitHistory": {
+      "properties": {
+        "tool": {
+          "const": "git_history",
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool",
+        "target",
+        "limit"
+      ],
+      "title": "GitHistory",
+      "type": "object"
+    },
+    "Graded": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "graded",
+          "default": "graded",
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "grades": {
+          "items": {
+            "$ref": "#/$defs/HitGrade"
+          },
+          "type": "array"
+        },
+        "rewrites": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "round",
+        "grades",
+        "rewrites"
+      ],
+      "title": "Graded",
+      "type": "object"
+    },
+    "HitGrade": {
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "verdict": {
+          "enum": [
+            "relevant",
+            "partial",
+            "irrelevant"
+          ],
+          "type": "string"
+        },
+        "by": {
+          "enum": [
+            "reranker",
+            "llm",
+            "unverified"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "title",
+        "score",
+        "verdict",
+        "by"
+      ],
+      "title": "HitGrade",
+      "type": "object"
+    },
+    "NaiveAnswer": {
+      "properties": {
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "type": "array"
+        },
+        "cited": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "latency_s": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "question",
+        "answer",
+        "model",
+        "sources",
+        "cited",
+        "usage",
+        "latency_s"
+      ],
+      "title": "NaiveAnswer",
+      "type": "object"
+    },
+    "Observation": {
+      "properties": {
+        "call": {
+          "discriminator": {
+            "mapping": {
+              "exact_search": "#/$defs/ExactSearch",
+              "git_history": "#/$defs/GitHistory",
+              "read_source": "#/$defs/ReadSource",
+              "semantic_search": "#/$defs/SemanticSearch",
+              "symbol_graph": "#/$defs/SymbolGraph"
+            },
+            "propertyName": "tool"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SemanticSearch"
+            },
+            {
+              "$ref": "#/$defs/ExactSearch"
+            },
+            {
+              "$ref": "#/$defs/SymbolGraph"
+            },
+            {
+              "$ref": "#/$defs/GitHistory"
+            },
+            {
+              "$ref": "#/$defs/ReadSource"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "elapsed_ms": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "call",
+        "text",
+        "elapsed_ms"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "Plan": {
+      "properties": {
+        "sub_questions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "type": "array"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sub_questions",
+        "steps",
+        "done",
+        "rationale"
+      ],
+      "title": "Plan",
+      "type": "object"
+    },
+    "Planned": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "planned",
+          "default": "planned",
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "plan": {
+          "$ref": "#/$defs/Plan"
+        },
+        "skipped_repeats": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "round",
+        "plan",
+        "skipped_repeats"
+      ],
+      "title": "Planned",
+      "type": "object"
+    },
+    "ReadSource": {
+      "properties": {
+        "tool": {
+          "const": "read_source",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "start_line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool",
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "ReadSource",
+      "type": "object"
+    },
+    "Repairing": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "repairing",
+          "default": "repairing",
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "calls": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "exact_search": "#/$defs/ExactSearch",
+                "git_history": "#/$defs/GitHistory",
+                "read_source": "#/$defs/ReadSource",
+                "semantic_search": "#/$defs/SemanticSearch",
+                "symbol_graph": "#/$defs/SymbolGraph"
+              },
+              "propertyName": "tool"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SemanticSearch"
+              },
+              {
+                "$ref": "#/$defs/ExactSearch"
+              },
+              {
+                "$ref": "#/$defs/SymbolGraph"
+              },
+              {
+                "$ref": "#/$defs/GitHistory"
+              },
+              {
+                "$ref": "#/$defs/ReadSource"
+              }
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "claims",
+        "calls"
+      ],
+      "title": "Repairing",
+      "type": "object"
+    },
+    "RouteView": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "route": {
+          "enum": [
+            "direct",
+            "agentic"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "reason",
+        "route"
+      ],
+      "title": "RouteView",
+      "type": "object"
+    },
+    "Routed": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "routed",
+          "default": "routed",
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "route": {
+          "enum": [
+            "direct",
+            "agentic"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "route",
+        "reason"
+      ],
+      "title": "Routed",
+      "type": "object"
+    },
+    "RunCreated": {
+      "description": "Sent by the API before the run starts: the id to share or reopen the run with.",
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "run_created",
+          "default": "run_created",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RunCreated",
+      "type": "object"
+    },
+    "RunStarted": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "run_started",
+          "default": "run_started",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "max_tokens": {
+          "type": "integer"
+        },
+        "max_seconds": {
+          "type": "number"
+        },
+        "max_cost_usd": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "question",
+        "max_tokens",
+        "max_seconds",
+        "max_cost_usd"
+      ],
+      "title": "RunStarted",
+      "type": "object"
+    },
+    "RunSummary": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "agent",
+            "naive"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "finished",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "direct_answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cost_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "seconds": {
+          "default": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "created_at",
+        "mode",
+        "status"
+      ],
+      "title": "RunSummary",
+      "type": "object"
+    },
+    "SavedRun": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "agent",
+            "naive"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "finished",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "direct_answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cost_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "seconds": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "events": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "created_at",
+        "mode",
+        "status",
+        "events"
+      ],
+      "title": "SavedRun",
+      "type": "object"
+    },
+    "SemanticSearch": {
+      "properties": {
+        "tool": {
+          "const": "semantic_search",
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "all",
+            "code",
+            "docs",
+            "changelog"
+          ],
+          "type": "string"
+        },
+        "include_tests": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tool",
+        "query",
+        "scope",
+        "include_tests"
+      ],
+      "title": "SemanticSearch",
+      "type": "object"
+    },
+    "Source": {
+      "properties": {
+        "n": {
+          "type": "integer"
+        },
+        "chunk_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "start_line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "n",
+        "chunk_id",
+        "path",
+        "start_line",
+        "end_line",
+        "title"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "SourceRange": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "start_line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "total_lines": {
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line",
+        "total_lines",
+        "text"
+      ],
+      "title": "SourceRange",
+      "type": "object"
+    },
+    "Step": {
+      "properties": {
+        "call": {
+          "discriminator": {
+            "mapping": {
+              "exact_search": "#/$defs/ExactSearch",
+              "git_history": "#/$defs/GitHistory",
+              "read_source": "#/$defs/ReadSource",
+              "semantic_search": "#/$defs/SemanticSearch",
+              "symbol_graph": "#/$defs/SymbolGraph"
+            },
+            "propertyName": "tool"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SemanticSearch"
+            },
+            {
+              "$ref": "#/$defs/ExactSearch"
+            },
+            {
+              "$ref": "#/$defs/SymbolGraph"
+            },
+            {
+              "$ref": "#/$defs/GitHistory"
+            },
+            {
+              "$ref": "#/$defs/ReadSource"
+            }
+          ]
+        },
+        "purpose": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "call",
+        "purpose"
+      ],
+      "title": "Step",
+      "type": "object"
+    },
+    "SubAnswer": {
+      "properties": {
+        "sub_question": {
+          "type": "string"
+        },
+        "answered": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "missing": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sub_question",
+        "answered",
+        "evidence",
+        "missing"
+      ],
+      "title": "SubAnswer",
+      "type": "object"
+    },
+    "Sufficiency": {
+      "properties": {
+        "sub_answers": {
+          "items": {
+            "$ref": "#/$defs/SubAnswer"
+          },
+          "type": "array"
+        },
+        "sufficient": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sub_answers",
+        "sufficient"
+      ],
+      "title": "Sufficiency",
+      "type": "object"
+    },
+    "SymbolGraph": {
+      "properties": {
+        "tool": {
+          "const": "symbol_graph",
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "relation": {
+          "enum": [
+            "definition",
+            "callers",
+            "callees",
+            "members",
+            "superclasses",
+            "subclasses"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "symbol",
+        "relation"
+      ],
+      "title": "SymbolGraph",
+      "type": "object"
+    },
+    "Synthesized": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "synthesized",
+          "default": "synthesized",
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "direct_answer": {
+          "type": "string"
+        },
+        "claims": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "attempt",
+        "direct_answer",
+        "claims"
+      ],
+      "title": "Synthesized",
+      "type": "object"
+    },
+    "ToolFinished": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "tool_finished",
+          "default": "tool_finished",
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "observation": {
+          "$ref": "#/$defs/Observation"
+        }
+      },
+      "required": [
+        "round",
+        "index",
+        "observation"
+      ],
+      "title": "ToolFinished",
+      "type": "object"
+    },
+    "ToolStarted": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "tool_started",
+          "default": "tool_started",
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "call": {
+          "discriminator": {
+            "mapping": {
+              "exact_search": "#/$defs/ExactSearch",
+              "git_history": "#/$defs/GitHistory",
+              "read_source": "#/$defs/ReadSource",
+              "semantic_search": "#/$defs/SemanticSearch",
+              "symbol_graph": "#/$defs/SymbolGraph"
+            },
+            "propertyName": "tool"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SemanticSearch"
+            },
+            {
+              "$ref": "#/$defs/ExactSearch"
+            },
+            {
+              "$ref": "#/$defs/SymbolGraph"
+            },
+            {
+              "$ref": "#/$defs/GitHistory"
+            },
+            {
+              "$ref": "#/$defs/ReadSource"
+            }
+          ]
+        }
+      },
+      "required": [
+        "round",
+        "index",
+        "call"
+      ],
+      "title": "ToolStarted",
+      "type": "object"
+    },
+    "Usage": {
+      "properties": {
+        "input_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "output_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "cache_read_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "cache_write_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "cost_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "calls": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "title": "Usage",
+      "type": "object"
+    },
+    "Verified": {
+      "properties": {
+        "seq": {
+          "default": 0,
+          "type": "integer"
+        },
+        "at": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_usd": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "spent_tokens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "verified",
+          "default": "verified",
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "supported": {
+          "type": "integer"
+        },
+        "partial": {
+          "type": "integer"
+        },
+        "unsupported": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "attempt",
+        "supported",
+        "partial",
+        "unsupported"
+      ],
+      "title": "Verified",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "event": {
+      "discriminator": {
+        "mapping": {
+          "checked": "#/$defs/Checked",
+          "exploration_done": "#/$defs/ExplorationDone",
+          "failed": "#/$defs/Failed",
+          "finished": "#/$defs/Finished",
+          "graded": "#/$defs/Graded",
+          "planned": "#/$defs/Planned",
+          "repairing": "#/$defs/Repairing",
+          "routed": "#/$defs/Routed",
+          "run_created": "#/$defs/RunCreated",
+          "run_started": "#/$defs/RunStarted",
+          "synthesized": "#/$defs/Synthesized",
+          "tool_finished": "#/$defs/ToolFinished",
+          "tool_started": "#/$defs/ToolStarted",
+          "verified": "#/$defs/Verified"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RunCreated"
+        },
+        {
+          "$ref": "#/$defs/RunStarted"
+        },
+        {
+          "$ref": "#/$defs/Routed"
+        },
+        {
+          "$ref": "#/$defs/Planned"
+        },
+        {
+          "$ref": "#/$defs/ToolStarted"
+        },
+        {
+          "$ref": "#/$defs/ToolFinished"
+        },
+        {
+          "$ref": "#/$defs/Graded"
+        },
+        {
+          "$ref": "#/$defs/Checked"
+        },
+        {
+          "$ref": "#/$defs/ExplorationDone"
+        },
+        {
+          "$ref": "#/$defs/Synthesized"
+        },
+        {
+          "$ref": "#/$defs/Verified"
+        },
+        {
+          "$ref": "#/$defs/Repairing"
+        },
+        {
+          "$ref": "#/$defs/Finished"
+        },
+        {
+          "$ref": "#/$defs/Failed"
+        }
+      ]
+    },
+    "answer": {
+      "$ref": "#/$defs/AnswerSummary"
+    },
+    "naive_answer": {
+      "$ref": "#/$defs/NaiveAnswer"
+    },
+    "run": {
+      "$ref": "#/$defs/SavedRun"
+    },
+    "run_summary": {
+      "$ref": "#/$defs/RunSummary"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceRange"
+    }
+  },
+  "required": [
+    "event",
+    "answer",
+    "naive_answer",
+    "run",
+    "run_summary",
+    "source"
+  ],
+  "title": "ApiTypes",
+  "type": "object"
+}

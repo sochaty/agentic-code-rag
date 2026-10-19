@@ -133,10 +133,31 @@ uv run acr serve                 # http://127.0.0.1:8000 — models load once at
 | `POST /api/ask` `{"question": "..."}` | Streams the run as server-sent events; the last event is `finished` with the full answer (or `failed`) |
 | `GET /api/source?path=&start=&end=` | Numbered lines — what a citation points at |
 | `GET /api/index` | Which repository, ref and provider the server answers about |
+| `GET /api/runs`, `GET /api/runs/{id}` | Recent questions, and one saved run with every event — what a share link replays |
+| `GET /api/samples` | Example questions for the UI |
 | `GET /healthz`, `GET /readyz` | Liveness, and readiness once models are loaded |
 
 `ACR_DEMO_MODE=true` turns on public-demo limits: questions per IP per hour, a daily cap,
 and fewer planning rounds.
+
+## The web UI
+
+```bash
+cd web && pnpm install && pnpm build     # once; acr serve then serves it at http://127.0.0.1:8000
+pnpm dev                                 # or: hot reload on :5173, proxying /api to :8000
+```
+
+- **Ask** streams the run live: the pipeline lights up stage by stage, each planning round
+  shows its sub-questions and tool calls, and a meter tracks dollars, tokens and seconds
+  against the budget. Switch to *Naive RAG* to see the single-search baseline answer the same question.
+- **Every citation opens the evidence**: the cited lines highlighted in the file with
+  context around them, the commit diff, or the search result, with a link to GitHub.
+- **Runs are saved** (`data/runs/`) and get a share link; *Replay* plays the run back at 4×
+  speed exactly as it happened.
+- Dark mode, and a layout that works on a phone.
+
+The TypeScript types are generated from the backend's Pydantic models (`pnpm gen:types`,
+via `acr schema`), so the event stream can't drift between the two.
 
 ## Use it from Claude Code, Cursor or any MCP client
 

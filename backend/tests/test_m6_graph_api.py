@@ -1,4 +1,5 @@
 import json
+import tempfile
 from typing import Any
 
 import pytest
@@ -87,6 +88,7 @@ def test_graph_exports_as_mermaid() -> None:
 
 
 def _client(ws: Workspace, llm: ScriptedLLM, **settings: Any) -> TestClient:
+    settings.setdefault("data_dir", tempfile.mkdtemp())  # saved runs stay out of the repo
     app = create_app(
         Settings(_env_file=None, **settings),  # type: ignore[call-arg]
         ws=ws,
@@ -116,7 +118,7 @@ def test_ask_streams_events_then_the_answer(sample_ws: Workspace) -> None:
             assert r.headers["content-type"].startswith("text/event-stream")
             events = _events("".join(r.iter_text()))
     names = [name for name, _ in events]
-    assert names[0] == "run_started" and names[-1] == "finished"
+    assert names[:2] == ["run_created", "run_started"] and names[-1] == "finished"
     assert "tool_finished" in names and "verified" in names
     answer = events[-1][1]["answer"]
     assert answer["direct_answer"] == "It upper-cases the SKU."

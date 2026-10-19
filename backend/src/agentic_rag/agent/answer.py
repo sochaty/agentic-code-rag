@@ -82,6 +82,30 @@ class _Verdicts(BaseModel):
     items: list[_ClaimVerdict]
 
 
+class RouteView(BaseModel):
+    category: str
+    reason: str
+    route: Literal["direct", "agentic"]
+
+
+class AnswerSummary(BaseModel):
+    """What API consumers get: the answer without the exploration (they saw it as events)."""
+
+    question: str
+    direct_answer: str
+    claims: list[CheckedClaim]
+    removed: list[CheckedClaim]
+    caveats: list[str]
+    insufficient: bool
+    repaired: bool
+    usage: Usage
+    latency_s: float
+    budget: str
+    route: RouteView
+    rounds: int
+    stop_reason: str
+
+
 class Answer(BaseModel):
     question: str
     direct_answer: str

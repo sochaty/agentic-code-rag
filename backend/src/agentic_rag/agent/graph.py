@@ -21,8 +21,10 @@ from langgraph.graph import END, START, StateGraph
 from agentic_rag.agent import events as ev
 from agentic_rag.agent.answer import (
     Answer,
+    AnswerSummary,
     CheckedClaim,
     Draft,
+    RouteView,
     repair_calls,
     synthesize,
     verify,
@@ -396,13 +398,14 @@ def run_exploration(ws: Workspace, llm: LLM, question: str, **kwargs: Any) -> Ex
 
 def answer_summary(answer: Answer) -> dict[str, Any]:
     """The answer without the exploration: consumers already received it event by event."""
-    data = answer.model_dump(mode="json", exclude={"exploration"})
-    data["route"] = answer.exploration.route.model_dump(mode="json") | {
-        "route": answer.exploration.route.route
-    }
-    data["rounds"] = len(answer.exploration.rounds)
-    data["stop_reason"] = answer.exploration.stop_reason
-    return data
+    route = answer.exploration.route
+    summary = AnswerSummary(
+        **answer.model_dump(exclude={"exploration"}),
+        route=RouteView(category=route.category, reason=route.reason, route=route.route),
+        rounds=len(answer.exploration.rounds),
+        stop_reason=answer.exploration.stop_reason,
+    )
+    return summary.model_dump(mode="json")
 
 
 def run_answer(ws: Workspace, llm: LLM, question: str, **kwargs: Any) -> Answer:
