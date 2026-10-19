@@ -15,6 +15,9 @@ class GrepHit(BaseModel):
     path: str
     line: int
     text: str
+    # Docs and changelogs: the heading the line sits under, e.g. "Version 1.0". Without it a
+    # changelog hit can't say which release it belongs to.
+    section: str | None = None
 
 
 class GrepResult(BaseModel):
@@ -38,7 +41,8 @@ class GrepResult(BaseModel):
             if hit.path != current:
                 current = hit.path
                 out.append(f"{hit.path}")
-            out.append(f"  {hit.line:>5}: {hit.text.strip()[:200]}")
+            where = f" [{hit.section}]" if hit.section else ""
+            out.append(f"  {hit.line:>5}{where}: {hit.text.strip()[:200]}")
         return "\n".join(out)
 
 
@@ -77,7 +81,7 @@ def exact_search(
             continue
         searched += 1
         matched = [
-            GrepHit(path=path.as_posix(), line=n, text=line)
+            GrepHit(path=path.as_posix(), line=n, text=line, section=ws.section_at(path, n))
             for n, line in enumerate(lines, 1)
             if pattern.search(line)
         ]

@@ -186,3 +186,12 @@ def test_legacy_qdrant_index_migrates_without_reembedding(tmp_path: Path) -> Non
     matrix = np.load(tmp_path / "vectors.npy")
     assert sorted(ids) == ["a", "b"]
     assert np.allclose(np.linalg.norm(matrix, axis=1), 1.0)
+
+
+def test_doc_and_changelog_hits_carry_their_section(sample_ws: Workspace) -> None:
+    """Regression: a changelog hit has to say which release it's under (eval H2/H4)."""
+    changelog = tools.exact_search(sample_ws, "Added carts")
+    assert [(h.line, h.section) for h in changelog.hits] == [(5, "Changelog > 1.1.0")]
+    assert "5 [Changelog > 1.1.0]:" in changelog.render()
+    code_hit = tools.exact_search(sample_ws, "def helper")
+    assert code_hit.hits[0].section is None  # code lines don't get a heading

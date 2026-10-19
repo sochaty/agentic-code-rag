@@ -38,6 +38,7 @@ from agentic_rag.agent.explore import (
     StopReason,
     _grade_round,
 )
+from agentic_rag.agent.options import FULL, AgentOptions
 from agentic_rag.agent.planner import plan_next
 from agentic_rag.agent.router import Route, route_question
 from agentic_rag.agent.sufficiency import check_sufficiency
@@ -73,6 +74,7 @@ class Deps:
     tracker: BudgetTracker
     reranker: Reranker
     emit: ev.Emitter
+    options: AgentOptions = FULL
 
 
 def _gathered(state: State) -> list[Observation]:
@@ -97,8 +99,11 @@ def _run_calls(deps: Deps, round_no: int, calls: list[ToolCall]) -> list[Observa
 
 def build_graph(deps: Deps) -> Any:
     def route(state: State) -> State:
-        decision, usage = route_question(deps.llm, deps.cheap, state["question"])
-        deps.tracker.charge(usage)
+        if deps.options.use_router:
+            decision, usage = route_question(deps.llm, deps.cheap, state["question"])
+            deps.tracker.charge(usage)
+        else:  # ablation: no router call; every question takes the full loop
+            decision = Route(category="multi_part", reason="router disabled")
         deps.emit(
             ev.Routed(category=decision.category, route=decision.route, reason=decision.reason)
         )
@@ -110,7 +115,14 @@ def build_graph(deps: Deps) -> Any:
         )
         raw = _run_calls(deps, 1, [call])
         observations, grades, rewrites = _grade_round(
-            deps.ws, deps.llm, deps.cheap, deps.reranker, state["question"], raw, deps.tracker
+            deps.ws,
+            deps.llm,
+            deps.cheap,
+            deps.reranker,
+            state["question"],
+            raw,
+            deps.tracker,
+            deps.options,
         )
         if grades:
             deps.emit(
@@ -128,7 +140,13 @@ def build_graph(deps: Deps) -> Any:
             return {"stop": _BUDGET_STOP[limit]}
         number = len(state["rounds"]) + 1
         proposed, usage = plan_next(
-            deps.llm, deps.heavy, state["question"], state["route"], _gathered(state), number
+            deps.llm,
+            deps.heavy,
+            state["question"],
+            state["route"],
+            _gathered(state),
+            number,
+            effort=deps.options.plan_effort,
         )
         deps.tracker.charge(usage)
         seen = list(state["seen"])
@@ -147,7 +165,14 @@ def build_graph(deps: Deps) -> Any:
         current = state["rounds"][-1]
         raw = _run_calls(deps, current.number, state["pending"])
         observations, grades, rewrites = _grade_round(
-            deps.ws, deps.llm, deps.cheap, deps.reranker, state["question"], raw, deps.tracker
+            deps.ws,
+            deps.llm,
+            deps.cheap,
+            deps.reranker,
+            state["question"],
+            raw,
+            deps.tracker,
+            deps.options,
         )
         if grades:
             deps.emit(
@@ -201,7 +226,9 @@ def build_graph(deps: Deps) -> Any:
     def synthesize_node(state: State) -> State:
         attempt = state.get("attempt", 0) + 1
         evidence = _gathered(state) + state.get("extra", [])
-        draft, usage = synthesize(deps.llm, deps.heavy, state["question"], evidence)
+        draft, usage = synthesize(
+            deps.llm, deps.heavy, state["question"], evidence, effort=deps.options.synth_effort
+        )
         deps.tracker.charge(usage)
         deps.emit(
             ev.Synthesized(
@@ -212,8 +239,19 @@ def build_graph(deps: Deps) -> Any:
 
     def verify_node(state: State) -> State:
         evidence = _gathered(state) + state.get("extra", [])
-        checked, usage = verify(deps.ws, deps.llm, deps.cheap, state["draft"].claims, evidence)
-        deps.tracker.charge(usage)
+        if deps.options.verify:
+            checked, usage = verify(deps.ws, deps.llm, deps.cheap, state["draft"].claims, evidence)
+            deps.tracker.charge(usage)
+        else:  # ablation: keep every claim, unchecked
+            checked = [
+                CheckedClaim(
+                    text=c.text,
+                    citations=c.citations,
+                    verdict="unverified",
+                    reason="verification disabled",
+                )
+                for c in state["draft"].claims
+            ]
         deps.emit(
             ev.Verified(
                 attempt=state["attempt"],
@@ -240,7 +278,9 @@ def build_graph(deps: Deps) -> Any:
         return "explored" if state.get("stop") else "execute"
 
     def after_execute(state: State) -> str:
-        return "explored" if state.get("stop") else "check"
+        if state.get("stop"):
+            return "explored"
+        return "check" if deps.options.sufficiency else "plan"
 
     def after_check(state: State) -> str:
         return "explored" if state.get("stop") else "plan"
@@ -269,7 +309,7 @@ def build_graph(deps: Deps) -> Any:
     graph.add_conditional_edges("route", after_route, ["direct_search", "plan"])
     graph.add_edge("direct_search", "explored")
     graph.add_conditional_edges("plan", after_plan, ["execute", "explored"])
-    graph.add_conditional_edges("execute", after_execute, ["check", "explored"])
+    graph.add_conditional_edges("execute", after_execute, ["check", "plan", "explored"])
     graph.add_conditional_edges("check", after_check, ["plan", "explored"])
     graph.add_conditional_edges("explored", after_explored, ["synthesize", END])
     graph.add_edge("synthesize", "verify")
@@ -298,6 +338,7 @@ def run(
     reranker: Reranker | None = None,
     want_answer: bool = True,
     sink: ev.Sink | None = None,
+    options: AgentOptions = FULL,
 ) -> tuple[State, BudgetTracker, float, ev.Emitter]:
     """Run the graph; returns the final state, tracker, wall-clock seconds and the emitter."""
     if tracker is None:
@@ -318,7 +359,9 @@ def run(
     )
     try:
         ws.warm_up()  # load models up front, not inside the first parallel round
-        deps = Deps(ws, llm, cheap_model, heavy_model, tracker, reranker or ws.reranker, emit)
+        deps = Deps(
+            ws, llm, cheap_model, heavy_model, tracker, reranker or ws.reranker, emit, options
+        )
         initial: State = {
             "question": question,
             "want_answer": want_answer,
