@@ -4,6 +4,8 @@
     GET  /api/source    ?path=&start=&end=  -> numbered lines (for opening a citation)
     GET  /api/runs      -> recent runs;  GET /api/runs/{id} -> one run, replayable
     GET  /api/samples   -> example questions
+    GET  /api/eval      -> eval runs;  GET /api/eval/{run} -> the dashboard
+    GET  /api/eval/{run}/{config}/{qid} -> one saved eval run, with its trace
     GET  /api/index     -> what the server is answering about
     GET  /healthz       -> process is up
     GET  /readyz        -> models are loaded and questions can run
@@ -15,6 +17,7 @@ When web/dist exists, the same server also serves the built web UI.
 
 import asyncio
 import json
+import mimetypes
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -36,6 +39,9 @@ from agentic_rag.agent.graph import run_answer
 from agentic_rag.api.limits import DemoLimiter, Limiter, Unlimited
 from agentic_rag.api.runs import RunStore, RunSummary, SavedRun, new_run_id
 from agentic_rag.config import Settings
+from agentic_rag.evaluation.dashboard import Dashboard
+from agentic_rag.evaluation.runner import RunResult
+from agentic_rag.evaluation.store import EvalRunInfo, EvalStore
 from agentic_rag.llm import LLM, make_llm
 from agentic_rag.search.rerank import Reranker
 from agentic_rag.workspace import Workspace
@@ -67,6 +73,7 @@ def create_app(
     reranker: Reranker | None = None,
     limiter: Limiter | None = None,
     web_dist: Path | None = None,
+    eval_dir: Path | None = None,
 ) -> FastAPI:
     """Pass `ws`/`llm`/`reranker` to inject them (tests); otherwise they're built at startup."""
     ready = threading.Event()
@@ -84,6 +91,8 @@ def create_app(
     )
     holder: dict[str, Any] = {"ws": ws, "llm": llm}
     runs = RunStore(settings.runs_dir)
+    eval_root = eval_dir or settings.eval_dir
+    evals = EvalStore(eval_root / "results", eval_root / "questions.jsonl")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -152,6 +161,24 @@ def create_app(
         if saved is None:
             raise HTTPException(404, "no such run")
         return saved
+
+    @app.get("/api/eval")
+    def eval_runs() -> list[EvalRunInfo]:
+        return evals.runs()
+
+    @app.get("/api/eval/{run_id}")
+    def eval_dashboard(run_id: str) -> Dashboard:
+        board = evals.dashboard(run_id)
+        if board is None:
+            raise HTTPException(404, "no such eval run")
+        return board
+
+    @app.get("/api/eval/{run_id}/{config}/{question_id}")
+    def eval_trace(run_id: str, config: str, question_id: str) -> RunResult:
+        result = evals.trace(run_id, config, question_id)
+        if result is None:
+            raise HTTPException(404, "no saved trace (raw eval results are local only)")
+        return result
 
     @app.post("/api/ask")
     async def ask(body: AskRequest, request: Request) -> StreamingResponse:
@@ -252,6 +279,7 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
     """Serve the built UI (web/dist) with SPA fallback: unknown paths get index.html."""
     if not (dist / "index.html").is_file():
         return
+    mimetypes.add_type("application/manifest+json", ".webmanifest")  # unknown to Windows
     root = dist.resolve()
 
     @app.get("/{path:path}", include_in_schema=False)

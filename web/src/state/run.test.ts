@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { parseSse } from '@/api/client'
 import type { Event } from '@/api/model'
 
+import { statesAt } from './playback'
 import { initialRun, observations, reduce, replay } from './run'
 
 const stamp = { seq: 0, at: 0, spent_usd: 0, spent_tokens: 0 }
@@ -85,5 +86,24 @@ describe('SSE parsing', () => {
     const { messages, rest } = parseSse(a + 'event: routed\ndata: {"ty')
     expect(messages).toEqual([{ type: 'run_created', id: 'x' }])
     expect(rest).toBe('event: routed\ndata: {"ty')
+  })
+})
+
+describe('side-by-side playback', () => {
+  const tracks = [
+    { events: run, duration: 9 },
+    { events: [], duration: 3.5 }, // naive: no events, just a latency
+  ]
+
+  it('shows each run as it stood at the shared clock', () => {
+    const [agent] = statesAt(tracks, 2)
+    expect(agent.status).toBe('running')
+    expect(agent.rounds[0].tools[0].status).toBe('done') // finished at 1.5s
+    expect(agent.answer).toBeUndefined() // arrives at 9s
+  })
+
+  it('shows finished runs when stopped', () => {
+    const [agent] = statesAt(tracks, null)
+    expect(agent.status).toBe('finished')
   })
 })

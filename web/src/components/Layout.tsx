@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, History, MessageSquareText, Moon, Sun } from 'lucide-react'
+import { BookOpen, ChartColumn, History, MessageSquareText, Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 const NAV = [
   { to: '/', label: 'Ask', icon: MessageSquareText },
   { to: '/history', label: 'History', icon: History },
+  { to: '/eval', label: 'Evaluation', icon: ChartColumn },
   { to: '/how-it-works', label: 'How it works', icon: BookOpen },
 ]
 
@@ -23,8 +24,9 @@ export function Layout() {
     <div className="min-h-svh bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
-          <NavLink to="/" className="mr-2 font-semibold tracking-tight">
-            agentic-code-rag
+          <NavLink to="/" className="mr-2 flex items-center gap-2 font-semibold tracking-tight">
+            <img src="/favicon.svg" alt="" className="size-6" />
+            <span className="hidden min-[400px]:inline">agentic-code-rag</span>
           </NavLink>
           <nav className="flex items-center gap-1">
             {NAV.map(({ to, label, icon: Icon }) => (

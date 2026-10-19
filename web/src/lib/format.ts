@@ -8,6 +8,16 @@ export function seconds(value = 0): string {
   return value < 10 ? `${value.toFixed(1)}s` : `${Math.round(value)}s`
 }
 
+export function pct(value = 0): string {
+  return `${Math.round(value * 100)}%`
+}
+
+/** A difference in accuracy as signed percentage points, e.g. `+8.3`. */
+export function points(value: number): string {
+  const p = (value * 100).toFixed(1)
+  return value > 0 ? `+${p}` : p
+}
+
 export function compact(value: number): string {
   return new Intl.NumberFormat('en', { notation: 'compact' }).format(value)
 }
