@@ -13,10 +13,10 @@ import { pct, points, usd } from '@/lib/format'
 import { SPLIT_LABELS } from '@/lib/grades'
 
 const SPLIT_NOTES: Record<string, string> = {
-  fresh: 'Written after the latest changes and never used to tune them — the honest numbers.',
-  heldout: 'Written after the agent was finished and never used to tune it — the honest numbers.',
+  fresh: 'Written after v1.1 was built and never used to tune it — the honest numbers for v1.1.',
+  heldout: 'Written after v1 was built: honest for v1, but v1.1 was diagnosed on these questions.',
   dev: 'Used while building and fixing the agent, so these numbers are optimistic.',
-  all: 'Dev and held-out together.',
+  all: 'Every question in this run, whatever its split.',
 }
 
 export function EvalPage() {
