@@ -2,8 +2,10 @@
 
 import json
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
@@ -13,6 +15,11 @@ from agentic_rag.ingest import pipeline, store
 from agentic_rag.tools.graph import Relation
 from agentic_rag.tools.semantic import Scope
 from agentic_rag.workspace import VECTOR_DIR, Workspace
+
+if TYPE_CHECKING:
+    from agentic_rag.agent.budget import Budget
+    from agentic_rag.config import Settings
+    from agentic_rag.llm import LLM
 
 app = typer.Typer(help="Agentic RAG over codebases.", no_args_is_help=True)
 corpus_app = typer.Typer(help="Manage the pinned corpora in corpora.toml.", no_args_is_help=True)
@@ -131,34 +138,74 @@ def read(index: IndexName, path: str, start: int = 1, end: int | None = None) ->
     typer.echo(tools.read_source(Workspace.open(index), path, start, end).render())
 
 
-@app.command()
-def ask(
-    index: IndexName,
-    question: str,
-    k: Annotated[int, typer.Option(help="Chunks to retrieve.")] = 8,
-    model: Annotated[str | None, typer.Option(help="Defaults to the heavy model.")] = None,
-) -> None:
-    """Answer with the naive single-pass RAG baseline. Calls the model API (spends credit)."""
+def _make_llm(settings: "Settings") -> "LLM":
+    from agentic_rag.llm import ConfigError, make_llm
+
+    try:
+        return make_llm(settings)
+    except ConfigError as error:
+        raise typer.BadParameter(str(error)) from None
+
+
+def _budget(settings: "Settings") -> "Budget":
+    from agentic_rag.agent.budget import Budget
+
+    return Budget(
+        max_tokens=settings.budget_max_tokens,
+        max_seconds=settings.budget_max_seconds,
+        max_cost_usd=settings.budget_max_cost_usd,
+    )
+
+
+@contextmanager
+def _model_session(index: str) -> Iterator[tuple["Settings", "LLM", Workspace]]:
+    """Settings, a configured LLM and an open workspace; a rejected key exits cleanly."""
     import anthropic
     import openai
 
-    from agentic_rag.llm import ConfigError, make_llm
-    from agentic_rag.naive import naive_answer
-
     settings = get_settings()
-    try:
-        llm = make_llm(settings)
-    except ConfigError as error:
-        raise typer.BadParameter(str(error)) from None
+    llm = _make_llm(settings)
     ws = Workspace.open(index)
     try:
-        answer = naive_answer(ws, question, llm, model or settings.heavy_model, k)
-        typer.echo(answer.render())
+        yield settings, llm, ws
     except (openai.AuthenticationError, anthropic.AuthenticationError):
         typer.echo(f"{settings.provider} rejected the API key (401). Check .env.", err=True)
         raise typer.Exit(1) from None
     finally:
         ws.close()
+
+
+@app.command()
+def ask(
+    index: IndexName,
+    question: str,
+    naive: Annotated[bool, typer.Option(help="Use the single-pass RAG baseline instead.")] = False,
+    trace: Annotated[bool, typer.Option(help="Also print how the agent investigated.")] = False,
+    rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
+    k: Annotated[int, typer.Option(help="Chunks to retrieve (--naive only).")] = 8,
+) -> None:
+    """Answer a question with cited, verified claims. Calls the model API (spends credit)."""
+    with _model_session(index) as (settings, llm, ws):
+        if naive:
+            from agentic_rag.naive import naive_answer
+
+            typer.echo(naive_answer(ws, question, llm, settings.heavy_model, k).render())
+            return
+        from agentic_rag.agent.answer import answer_question
+
+        answer = answer_question(
+            ws,
+            llm,
+            question,
+            cheap_model=settings.cheap_model,
+            heavy_model=settings.heavy_model,
+            budget=_budget(settings),
+            max_rounds=rounds,
+        )
+        if trace:
+            typer.echo(answer.exploration.render())
+            typer.echo("\n" + "=" * 72 + "\n")
+        typer.echo(answer.render())
 
 
 @app.command()
@@ -167,37 +214,17 @@ def explore(
     question: str,
     rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
 ) -> None:
-    """Route, then plan, run, grade and check tool calls round by round (answer: M5)."""
-    import anthropic
-    import openai
-
-    from agentic_rag.agent.budget import Budget
+    """Show the investigation only: route, plan, run, grade and check, round by round."""
     from agentic_rag.agent.explore import explore as run_explore
-    from agentic_rag.llm import ConfigError, make_llm
 
-    settings = get_settings()
-    try:
-        llm = make_llm(settings)
-    except ConfigError as error:
-        raise typer.BadParameter(str(error)) from None
-    ws = Workspace.open(index)
-    try:
+    with _model_session(index) as (settings, llm, ws):
         result = run_explore(
             ws,
             llm,
             question,
             cheap_model=settings.cheap_model,
             heavy_model=settings.heavy_model,
-            budget=Budget(
-                max_tokens=settings.budget_max_tokens,
-                max_seconds=settings.budget_max_seconds,
-                max_cost_usd=settings.budget_max_cost_usd,
-            ),
+            budget=_budget(settings),
             max_rounds=rounds,
         )
         typer.echo(result.render())
-    except (openai.AuthenticationError, anthropic.AuthenticationError):
-        typer.echo(f"{settings.provider} rejected the API key (401). Check .env.", err=True)
-        raise typer.Exit(1) from None
-    finally:
-        ws.close()

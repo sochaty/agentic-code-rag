@@ -22,13 +22,15 @@ class GrepResult(BaseModel):
     case_sensitive: bool
     total_matches: int
     files_matched: int
+    files_searched: int = 0
     hits: list[GrepHit]
 
     def render(self) -> str:
         if not self.hits:
-            return f"No literal matches for {self.term!r}."
+            return f"No literal matches for {self.term!r} in {self.files_searched} files searched."
         out = [
-            f"{self.total_matches} matches in {self.files_matched} files for {self.term!r}"
+            f"{self.total_matches} matches in {self.files_matched} of {self.files_searched} files "
+            f"for {self.term!r}"
             + (f" (showing {len(self.hits)})" if len(self.hits) < self.total_matches else "")
         ]
         current = ""
@@ -64,7 +66,7 @@ def exact_search(
         return is_test_path(path), path.as_posix()
 
     all_hits: list[GrepHit] = []
-    total, files = 0, 0
+    total, files, searched = 0, 0, 0
     for path in sorted(ws.files, key=sort_key):
         if path_prefix and not path.as_posix().startswith(path_prefix):
             continue
@@ -73,6 +75,7 @@ def exact_search(
         lines = ws.read_lines(path)
         if lines is None:
             continue
+        searched += 1
         matched = [
             GrepHit(path=path.as_posix(), line=n, text=line)
             for n, line in enumerate(lines, 1)
@@ -87,5 +90,6 @@ def exact_search(
         case_sensitive=case_sensitive,
         total_matches=total,
         files_matched=files,
+        files_searched=searched,
         hits=all_hits[:k],
     )

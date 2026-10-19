@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M2 — tools + naive baseline). The agent loop isn't built yet; follow along or star the repo.
+> **Status:** early development (M5 — the agent answers with verified citations). UI, eval and packaging are next; follow along or star the repo.
 
 ## Why
 
@@ -48,14 +48,20 @@ uv run acr grep   flask SESSION_COOKIE_SAMESITE                             # ex
 uv run acr symbol flask full_dispatch_request --rel callees                 # symbol_graph
 uv run acr history flask Flask.make_response                                # git_history (follows the lines)
 uv run acr read   flask src/flask/app.py --start 900 --end 940              # read_source
-uv run acr ask    flask "what does preprocess_request do?"                  # naive RAG baseline (calls the model)
-uv run acr explore flask "who ends up calling handle_user_exception?"       # agent: route + plan + run tools
+uv run acr ask    flask "who ends up calling handle_user_exception?"        # the agent: verified, cited answer
+uv run acr ask    flask "who ends up calling handle_user_exception?" --trace  # ...plus how it investigated
+uv run acr ask    flask "what does preprocess_request do?" --naive          # single-pass RAG baseline
+uv run acr explore flask "does Flask have built-in rate limiting?"          # the investigation only
 ```
 
-`acr explore` shows the agent's reasoning so far: the router's decision, each planning round's
+`acr ask` writes the answer as a bottom line plus separate claims, each citing `file:line`, a
+commit, or the search that proved something absent. Every claim is then checked against the
+cited lines **re-read from disk**; unsupported claims trigger one targeted re-retrieval, and
+anything that still fails is removed and listed under "Removed" rather than kept quietly.
+
+`acr explore` shows just the investigation: the router's decision, each planning round's
 sub-questions and tool calls, what every call returned, how semantic hits were graded, any
-query rewrites, the sufficiency check, and why the loop stopped. Synthesizing an answer comes
-in M5.
+query rewrites, the sufficiency check, and why the loop stopped.
 
 How the loop keeps cost down:
 
@@ -81,7 +87,7 @@ server also works through the OpenAI provider — for example a free local model
 | OpenAI (default) | `gpt-6-luna` | `gpt-6.1-sol` |
 | Anthropic | `claude-haiku-5-5` | `claude-sonnet-5-5` |
 
-`acr ask` prints tokens and cost for every question — roughly $0.03–0.05 with the default heavy model.
+`acr ask` prints tokens and cost for every question: about $0.006 for a naive answer and around a cent or two for a verified agent answer with the default models.
 
 ## What ingestion produces
 

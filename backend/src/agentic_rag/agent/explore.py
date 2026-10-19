@@ -169,13 +169,18 @@ def explore(
     *,
     cheap_model: str,
     heavy_model: str,
-    budget: Budget,
+    budget: Budget | None = None,
+    tracker: BudgetTracker | None = None,
     max_rounds: int = MAX_ROUNDS,
     reranker: Reranker | None = None,
 ) -> Exploration:
+    """Pass `budget` for a fresh tracker, or `tracker` to share one with later steps."""
+    if tracker is None:
+        if budget is None:
+            raise ValueError("explore() needs a budget or a tracker")
+        tracker = BudgetTracker(budget)
     ws.warm_up()  # load models up front, not inside the first parallel round
     reranker = reranker or ws.reranker
-    tracker = BudgetTracker(budget)
     route, usage = route_question(llm, cheap_model, question)
     tracker.charge(usage)
 
