@@ -23,6 +23,7 @@ eval/results/*
 !eval/results/*/
 eval/results/*/*/
 !eval/results/*/results.md
+!eval/results/*/dashboard.json
 
 # Secrets
 .env

@@ -1,4 +1,4 @@
-import type { Event, RunSummary, SavedRun, SourceRange } from './model'
+import type { Dashboard, EvalRunInfo, Event, RunResult, RunSummary, SavedRun, SourceRange } from './model'
 
 export type Mode = 'agent' | 'naive'
 
@@ -26,6 +26,12 @@ export const api = {
   run: (id: string) => getJson<SavedRun>(`/api/runs/${encodeURIComponent(id)}`),
   source: (path: string, start: number, end: number) =>
     getJson<SourceRange>(`/api/source?${new URLSearchParams({ path, start: String(start), end: String(end) })}`),
+  evals: () => getJson<EvalRunInfo[]>('/api/eval'),
+  dashboard: (run: string) => getJson<Dashboard>(`/api/eval/${encodeURIComponent(run)}`),
+  trace: (run: string, config: string, question: string) =>
+    getJson<RunResult>(
+      `/api/eval/${encodeURIComponent(run)}/${encodeURIComponent(config)}/${encodeURIComponent(question)}`,
+    ),
 }
 
 /** Split an SSE byte stream into (event, data) messages. Exported for tests. */

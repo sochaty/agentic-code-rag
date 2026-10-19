@@ -70,6 +70,65 @@
       "title": "AnswerSummary",
       "type": "object"
     },
+    "Cell": {
+      "description": "One configuration's result on one question.",
+      "properties": {
+        "grade": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        },
+        "contradicted": {
+          "type": "boolean"
+        },
+        "cost_usd": {
+          "type": "number"
+        },
+        "latency_s": {
+          "type": "number"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rounds": {
+          "type": "integer"
+        },
+        "stop_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "grade",
+        "score",
+        "contradicted",
+        "cost_usd",
+        "latency_s",
+        "route",
+        "rounds",
+        "stop_reason",
+        "reason"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
     "Checked": {
       "properties": {
         "seq": {
@@ -210,6 +269,277 @@
         "sha"
       ],
       "title": "Citation",
+      "type": "object"
+    },
+    "CitedRef": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "code",
+            "commit",
+            "search"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "CitedRef",
+      "type": "object"
+    },
+    "Comparison": {
+      "description": "`config` minus `baseline` in accuracy, paired over the same questions.",
+      "properties": {
+        "config": {
+          "type": "string"
+        },
+        "baseline": {
+          "type": "string"
+        },
+        "diff": {
+          "$ref": "#/$defs/Interval"
+        },
+        "wins": {
+          "type": "integer"
+        },
+        "losses": {
+          "type": "integer"
+        },
+        "significant": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "config",
+        "baseline",
+        "diff",
+        "wins",
+        "losses",
+        "significant"
+      ],
+      "title": "Comparison",
+      "type": "object"
+    },
+    "ConfigInfo": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "mode",
+        "description"
+      ],
+      "title": "ConfigInfo",
+      "type": "object"
+    },
+    "ConfigSummary": {
+      "properties": {
+        "config": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        },
+        "accuracy": {
+          "type": "number"
+        },
+        "correct": {
+          "type": "number"
+        },
+        "abstained": {
+          "type": "number"
+        },
+        "contradicted": {
+          "type": "number"
+        },
+        "evidence_recall": {
+          "type": "number"
+        },
+        "cost_usd": {
+          "type": "number"
+        },
+        "total_cost_usd": {
+          "type": "number"
+        },
+        "judge_cost_usd": {
+          "type": "number"
+        },
+        "latency_p50": {
+          "type": "number"
+        },
+        "latency_p95": {
+          "type": "number"
+        },
+        "model_calls": {
+          "type": "number"
+        },
+        "by_category": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "config",
+        "runs",
+        "errors",
+        "accuracy",
+        "correct",
+        "abstained",
+        "contradicted",
+        "evidence_recall",
+        "cost_usd",
+        "total_cost_usd",
+        "judge_cost_usd",
+        "latency_p50",
+        "latency_p95",
+        "model_calls",
+        "by_category"
+      ],
+      "title": "ConfigSummary",
+      "type": "object"
+    },
+    "Dashboard": {
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "configs": {
+          "items": {
+            "$ref": "#/$defs/ConfigInfo"
+          },
+          "type": "array"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/QuestionInfo"
+          },
+          "type": "array"
+        },
+        "splits": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SplitView"
+          },
+          "type": "object"
+        },
+        "cells": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Cell"
+            },
+            "type": "object"
+          },
+          "type": "object"
+        },
+        "total_cost_usd": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "run_id",
+        "generated_at",
+        "configs",
+        "questions",
+        "splits",
+        "cells",
+        "total_cost_usd"
+      ],
+      "title": "Dashboard",
+      "type": "object"
+    },
+    "EvalRunInfo": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "integer"
+        },
+        "configs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "total_cost_usd": {
+          "type": "number"
+        },
+        "has_traces": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "generated_at",
+        "questions",
+        "configs",
+        "total_cost_usd",
+        "has_traces"
+      ],
+      "title": "EvalRunInfo",
       "type": "object"
     },
     "ExactSearch": {
@@ -480,6 +810,62 @@
       "title": "HitGrade",
       "type": "object"
     },
+    "Interval": {
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "low": {
+          "type": "number"
+        },
+        "high": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "low",
+        "high"
+      ],
+      "title": "Interval",
+      "type": "object"
+    },
+    "Judgement": {
+      "properties": {
+        "grade": {
+          "enum": [
+            "correct",
+            "partial",
+            "incorrect",
+            "abstained"
+          ],
+          "type": "string"
+        },
+        "facts_present": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "contradictions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "grade",
+        "facts_present",
+        "contradictions",
+        "reason"
+      ],
+      "title": "Judgement",
+      "type": "object"
+    },
     "NaiveAnswer": {
       "properties": {
         "question": {
@@ -648,6 +1034,34 @@
         "skipped_repeats"
       ],
       "title": "Planned",
+      "type": "object"
+    },
+    "QuestionInfo": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "split": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "gold_answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "split",
+        "question",
+        "gold_answer"
+      ],
+      "title": "QuestionInfo",
       "type": "object"
     },
     "ReadSource": {
@@ -845,6 +1259,120 @@
         "id"
       ],
       "title": "RunCreated",
+      "type": "object"
+    },
+    "RunResult": {
+      "properties": {
+        "question_id": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "split": {
+          "default": "dev",
+          "type": "string"
+        },
+        "config": {
+          "type": "string"
+        },
+        "answer_text": {
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CitedRef"
+          },
+          "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "latency_s": {
+          "type": "number"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rounds": {
+          "default": 0,
+          "type": "integer"
+        },
+        "stop_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "events": {
+          "default": [],
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "judgement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Judgement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "judge_usage": {
+          "$ref": "#/$defs/Usage",
+          "default": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0,
+            "calls": 0
+          }
+        },
+        "evidence_recall": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "question_id",
+        "category",
+        "config",
+        "answer_text",
+        "citations",
+        "usage",
+        "latency_s"
+      ],
+      "title": "RunResult",
       "type": "object"
     },
     "RunStarted": {
@@ -1122,6 +1650,39 @@
         "text"
       ],
       "title": "SourceRange",
+      "type": "object"
+    },
+    "SplitView": {
+      "properties": {
+        "questions": {
+          "type": "integer"
+        },
+        "summaries": {
+          "items": {
+            "$ref": "#/$defs/ConfigSummary"
+          },
+          "type": "array"
+        },
+        "accuracy": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Interval"
+          },
+          "type": "object"
+        },
+        "comparisons": {
+          "items": {
+            "$ref": "#/$defs/Comparison"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "questions",
+        "summaries",
+        "accuracy",
+        "comparisons"
+      ],
+      "title": "SplitView",
       "type": "object"
     },
     "Step": {
@@ -1546,6 +2107,15 @@
     },
     "source": {
       "$ref": "#/$defs/SourceRange"
+    },
+    "eval_run": {
+      "$ref": "#/$defs/EvalRunInfo"
+    },
+    "dashboard": {
+      "$ref": "#/$defs/Dashboard"
+    },
+    "eval_trace": {
+      "$ref": "#/$defs/RunResult"
     }
   },
   "required": [
@@ -1554,7 +2124,10 @@
     "naive_answer",
     "run",
     "run_summary",
-    "source"
+    "source",
+    "eval_run",
+    "dashboard",
+    "eval_trace"
   ],
   "title": "ApiTypes",
   "type": "object"

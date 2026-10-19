@@ -135,6 +135,8 @@ uv run acr serve                 # http://127.0.0.1:8000 — models load once at
 | `GET /api/index` | Which repository, ref and provider the server answers about |
 | `GET /api/runs`, `GET /api/runs/{id}` | Recent questions, and one saved run with every event — what a share link replays |
 | `GET /api/samples` | Example questions for the UI |
+| `GET /api/eval`, `GET /api/eval/{run}` | Eval runs, and one run's dashboard (summaries, intervals, every grade) |
+| `GET /api/eval/{run}/{config}/{question}` | One saved eval answer with its full trace |
 | `GET /healthz`, `GET /readyz` | Liveness, and readiness once models are loaded |
 
 `ACR_DEMO_MODE=true` turns on public-demo limits: questions per IP per hour, a daily cap,
@@ -154,10 +156,34 @@ pnpm dev                                 # or: hot reload on :5173, proxying /ap
   context around them, the commit diff, or the search result, with a link to GitHub.
 - **Runs are saved** (`data/runs/`) and get a share link; *Replay* plays the run back at 4×
   speed exactly as it happened.
-- Dark mode, and a layout that works on a phone.
+- **Evaluation** shows every eval run: held-out accuracy first, each configuration with its
+  bootstrap 95% interval, accuracy against cost, a paired comparison that says whether a
+  difference is real or noise, accuracy by question category, and a grid of every question ×
+  configuration. Open any question to replay two configurations side by side on one clock.
+- Dark mode, a layout that works on a phone, and it installs as an app (PWA) from the browser.
 
 The TypeScript types are generated from the backend's Pydantic models (`pnpm gen:types`,
 via `acr schema`), so the event stream can't drift between the two.
+
+## Evaluation
+
+`eval/questions.jsonl` holds 79 questions about Flask with gold answers, key facts and gold
+evidence: 31 *dev* questions used while building the agent, and 48 *held-out* questions written
+afterwards and never used to tune it. The held-out numbers are the headline.
+
+```bash
+uv run acr eval check                              # validate the gold evidence against the repo (free)
+uv run acr eval run v1 --configs all               # dry run: prints the estimated cost
+uv run acr eval run v1 --configs all --yes         # 8 configurations x 79 questions, resumable
+uv run acr eval report v1                          # rewrite results.md and dashboard.json (free)
+```
+
+Each answer is graded by a judge model against the gold answer (correct, partial, incorrect,
+or abstained), and the ablations switch off one part of the agent at a time. v1 results:
+[`eval/results/v1/results.md`](eval/results/v1/results.md), or the **Evaluation** page in the UI.
+On the held-out set the full agent scored 84% against 76% for single-pass RAG at 1.5x the cost.
+That gap is *not* statistically significant at 48 questions. Turning off the sufficiency
+check (92%) is the one significant improvement.
 
 ## Use it from Claude Code, Cursor or any MCP client
 

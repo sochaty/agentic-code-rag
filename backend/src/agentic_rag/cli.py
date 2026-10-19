@@ -324,9 +324,9 @@ def eval_run(
     yes: Annotated[bool, typer.Option("--yes", help="Actually run (spends API credit).")] = False,
 ) -> None:
     """Run configurations x questions, judge every answer, save per-run JSON. Resumable."""
-    from agentic_rag.evaluation import dataset, report
+    from agentic_rag.evaluation import dataset
     from agentic_rag.evaluation.configs import CONFIGS
-    from agentic_rag.evaluation.runner import load_results, run_one, run_suite
+    from agentic_rag.evaluation.runner import run_one, run_suite
 
     settings = get_settings()
     questions = dataset.load(settings.eval_dir / "questions.jsonl")
@@ -378,21 +378,27 @@ def eval_run(
             typer.echo(f"  {r.config:<15} {r.question_id:<4} {grade:<10} {cost}  {r.latency_s}s")
 
         run_suite(run_dir, questions, [CONFIGS[n] for n in names], execute, workers, progress)
-        text = report.full_report(load_results(run_dir))
-        (run_dir / "results.md").write_text(text, encoding="utf-8")
-        typer.echo("\n" + text)
+        typer.echo("\n" + _write_reports(run_id))
+
+
+def _write_reports(run_id: str) -> str:
+    """Rewrite results.md and dashboard.json (both committed) from the raw results."""
+    from agentic_rag.evaluation import report
+    from agentic_rag.evaluation.runner import load_results
+    from agentic_rag.evaluation.store import EvalStore
+
+    settings = get_settings()
+    run_dir = settings.eval_dir / "results" / run_id
+    text = report.full_report(load_results(run_dir))
+    (run_dir / "results.md").write_text(text, encoding="utf-8")
+    EvalStore(run_dir.parent, settings.eval_dir / "questions.jsonl").write(run_id)
+    return text
 
 
 @eval_app.command("report")
 def eval_report(run_id: str) -> None:
-    """Re-print the tables for a saved run (free)."""
-    from agentic_rag.evaluation import report
-    from agentic_rag.evaluation.runner import load_results
-
-    run_dir = get_settings().eval_dir / "results" / run_id
-    text = report.full_report(load_results(run_dir))
-    (run_dir / "results.md").write_text(text, encoding="utf-8")
-    typer.echo(text)
+    """Re-print the tables for a saved run and refresh its dashboard.json (free)."""
+    typer.echo(_write_reports(run_id))
 
 
 @eval_app.command("rejudge")
@@ -404,7 +410,7 @@ def eval_rejudge(
     ] = False,
 ) -> None:
     """Re-grade saved answers against the current gold (after fixing a gold answer)."""
-    from agentic_rag.evaluation import dataset, report
+    from agentic_rag.evaluation import dataset
     from agentic_rag.evaluation.judge import judge
     from agentic_rag.evaluation.runner import evidence_recall, load_results
 
@@ -425,10 +431,8 @@ def eval_rejudge(
         saved = run_dir / r.config / f"{r.question_id}.json"
         saved.write_text(r.model_dump_json(indent=1), encoding="utf-8")
         typer.echo(f"  {r.config:<15} {r.question_id:<4} {r.judgement.grade}")
-    text = report.full_report(load_results(run_dir))
-    (run_dir / "results.md").write_text(text, encoding="utf-8")
     typer.echo("")
-    typer.echo(text)
+    typer.echo(_write_reports(run_id))
 
 
 @app.command()
@@ -441,6 +445,9 @@ def schema(
     from agentic_rag.agent.answer import AnswerSummary
     from agentic_rag.agent.events import Event
     from agentic_rag.api.runs import RunSummary, SavedRun
+    from agentic_rag.evaluation.dashboard import Dashboard
+    from agentic_rag.evaluation.runner import RunResult
+    from agentic_rag.evaluation.store import EvalRunInfo
     from agentic_rag.naive import NaiveAnswer
     from agentic_rag.tools.source import SourceRange
 
@@ -451,6 +458,9 @@ def schema(
         run: SavedRun
         run_summary: RunSummary
         source: SourceRange
+        eval_run: EvalRunInfo
+        dashboard: Dashboard
+        eval_trace: RunResult
 
     def drop_field_titles(node: object) -> object:
         # Pydantic titles every field; TypeScript generators turn each into a noisy alias

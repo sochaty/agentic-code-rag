@@ -33,7 +33,7 @@ function Claim({ claim, onOpen }: { claim: CheckedClaim; onOpen: (c: Citation) =
     <li className="flex gap-2">
       <Icon className={`mt-0.5 size-4 shrink-0 ${v.className}`} aria-label={v.label} />
       <div className="min-w-0 space-y-1">
-        <div className="prose-sm text-sm">
+        <div className="markdown text-sm">
           <Markdown>{claim.text}</Markdown>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -106,7 +106,7 @@ export function NaiveAnswerView({ answer, onOpen }: { answer: NaiveAnswer; onOpe
         <CardTitle className="text-sm font-medium text-muted-foreground">Naive RAG: one search, one answer</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <div className="prose-sm">
+        <div className="markdown">
           <Markdown>{answer.answer}</Markdown>
         </div>
         <div className="flex flex-wrap gap-1">
