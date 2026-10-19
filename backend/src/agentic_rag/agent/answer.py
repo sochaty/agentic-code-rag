@@ -10,19 +10,21 @@ if it happens to be true. Removed claims are reported, never silently dropped.
 
 import re
 import subprocess
-import time
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
 from agentic_rag import tools
-from agentic_rag.agent.budget import Budget, BudgetTracker
-from agentic_rag.agent.calls import Observation, SemanticSearch, SymbolGraph, execute
-from agentic_rag.agent.explore import Exploration, explore
+from agentic_rag.agent.budget import Budget
+from agentic_rag.agent.calls import Observation, SemanticSearch, SymbolGraph
+from agentic_rag.agent.explore import Exploration
 from agentic_rag.agent.structured import complete_structured
 from agentic_rag.llm import LLM, Usage
 from agentic_rag.search.rerank import Reranker
 from agentic_rag.workspace import Workspace
+
+if TYPE_CHECKING:
+    from agentic_rag.agent.events import Sink
 
 MAX_CITED_LINES = 80
 REPAIR_IDENTIFIERS = 2  # symbol lookups per unsupported claim
@@ -303,48 +305,22 @@ def answer_question(
     budget: Budget,
     max_rounds: int = 3,
     reranker: Reranker | None = None,
+    sink: "Sink | None" = None,
 ) -> Answer:
-    started = time.perf_counter()
-    tracker = BudgetTracker(budget)  # one clock and one bill for exploring and answering
-    exploration = explore(
+    """Investigate, answer, verify and (once, if needed) repair. Runs the agent graph.
+
+    The answer is always written, even past the budget; only the repair pass is skipped.
+    """
+    from agentic_rag.agent.graph import run_answer
+
+    return run_answer(
         ws,
         llm,
         question,
         cheap_model=cheap_model,
         heavy_model=heavy_model,
-        tracker=tracker,
+        budget=budget,
         max_rounds=max_rounds,
         reranker=reranker,
-    )
-    # The answer always gets written, even past the budget: stopping without one helps nobody.
-    # Only the optional repair pass is skipped when the budget has run out.
-    observations = list(exploration.observations)
-
-    draft, usage = synthesize(llm, heavy_model, question, observations)
-    tracker.charge(usage)
-    checked, usage = verify(ws, llm, cheap_model, draft.claims, observations)
-    tracker.charge(usage)
-
-    repaired = False
-    unsupported = [c for c in checked if c.verdict == "unsupported"]
-    if unsupported and not tracker.exhausted():
-        repaired = True
-        observations += [execute(ws, call) for call in repair_calls(unsupported)]
-        draft, usage = synthesize(llm, heavy_model, question, observations)
-        tracker.charge(usage)
-        checked, usage = verify(ws, llm, cheap_model, draft.claims, observations)
-        tracker.charge(usage)
-
-    return Answer(
-        question=question,
-        direct_answer=draft.direct_answer,
-        claims=[c for c in checked if c.verdict != "unsupported"],
-        removed=[c for c in checked if c.verdict == "unsupported"],
-        caveats=draft.caveats,
-        insufficient=draft.insufficient,
-        repaired=repaired,
-        exploration=exploration,
-        usage=tracker.usage,
-        latency_s=round(time.perf_counter() - started, 1),
-        budget=tracker.summary(),
+        sink=sink,
     )

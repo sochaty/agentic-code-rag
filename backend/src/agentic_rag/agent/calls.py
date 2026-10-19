@@ -92,8 +92,9 @@ class Observation(BaseModel):
     text: str
     error: str | None = None
     elapsed_ms: int
-    # semantic_search keeps its hits so grading can filter them and re-render `text`.
-    search: SearchResult | None = None
+    # semantic_search keeps its hits so grading can filter them and re-render `text`. Internal
+    # only: serialised events already carry `text`, and the `graded` event the verdicts.
+    search: SearchResult | None = Field(default=None, exclude=True)
 
     @property
     def key(self) -> str:

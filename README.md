@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M5 — the agent answers with verified citations). UI, eval and packaging are next; follow along or star the repo.
+> **Status:** early development (M6 — the agent runs as a service and streams every step). MCP, eval and UI are next; follow along or star the repo.
 
 ## Why
 
@@ -10,17 +10,38 @@ Single-pass RAG retrieves once and hopes. That works for "what does `X` do?" and
 
 ## How it works
 
-```
-question → router ──simple──→ one-pass retrieve → answer
-             └──complex──→ planner → tools (parallel) → rerank-grade
-                  → [borderline only → LLM grade] → enough evidence?
-                  → no: rewrite & retry (while budget remains)
-                  → synthesize with file:line citations → verify each claim
-                  → unsupported claim: re-retrieve (while budget remains)
-                  → answer, or an honest "not enough evidence"
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 320}}}%%
+flowchart TD
+    Q(["Question"]) --> R("Router · cheap model<br/>classify the question")
+    R -- "lookup · conceptual" --> D["One hybrid search, graded"]
+    R -- "call graph · history · existence" --> P
+
+    subgraph INVESTIGATE["Investigate · up to 3 rounds"]
+        P["Planner · strong model<br/>sub-questions + tool calls"] --> T["Run tool calls in parallel"]
+        T --> G["Grade semantic hits<br/>reranker first · cheap model if borderline"]
+        G -. "all missed" .-> RW["Rewrite query, retry once"] -.-> G
+        G --> S("All sub-questions answered?<br/>cheap model")
+        S -- "no" --> P
+    end
+    TL[["semantic_search · exact_search · symbol_graph<br/>git_history · read_source"]] --- T
+
+    subgraph ANSWER["Answer"]
+        SY["Synthesize · strong model<br/>bottom line + cited claims"] --> V("Verify each claim against<br/>the cited lines, re-read from disk")
+        V -. "unsupported" .-> RP["Targeted re-retrieval, once"] -.-> SY
+    end
+
+    D --> SY
+    S -- "yes" --> SY
+    V -- "supported" --> A(["Answer · every claim cites file:line,<br/>a commit, or the search that proved absence"])
+    B{{"Budget · tokens · seconds · dollars<br/>checked before every model call"}} -.- INVESTIGATE
 ```
 
-Five tools: semantic search, exact search, symbol/call graph, git history, and source reads. The same tools are exposed as an MCP server.
+**How to read it:** the router only *classifies* the question; code maps the category to a path,
+so "does X exist?" can never be answered from a single search. Exact search, the call graph,
+history and source reads return precise facts; only fuzzy semantic hits are graded. Claims that
+still fail verification after one repair are removed from the answer and listed, never kept quietly.
+The exact LangGraph state machine is in [The agent graph](#the-agent-graph) below.
 
 ## Quick start (developers)
 
@@ -74,6 +95,48 @@ How the loop keeps cost down:
   answered; if so the loop stops before paying for another planner call.
 - **Budget:** per-question limits on tokens, seconds and dollars (`ACR_BUDGET_MAX_TOKENS`,
   `ACR_BUDGET_MAX_SECONDS`, `ACR_BUDGET_MAX_COST_USD`), checked before every model call.
+
+## The agent graph
+
+The agent is an explicit [LangGraph](https://github.com/langchain-ai/langgraph) state machine
+(`uv run acr graph` prints it). Dotted edges are decisions made at run time:
+
+```mermaid
+graph TD;
+  start([start]) --> route
+  route -.direct.-> direct_search --> explored
+  route -.agentic.-> plan
+  plan -.-> execute
+  plan -.budget.-> explored
+  execute -.-> check
+  execute -.done / max rounds / budget.-> explored
+  check -.missing evidence.-> plan
+  check -.sufficient.-> explored
+  explored -.answer wanted.-> synthesize --> verify
+  explored -.explore only.-> done([end])
+  verify -.unsupported claims, budget left.-> repair --> synthesize
+  verify -.-> done
+```
+
+Every node emits a typed event (`agent/events.py`): routed, planned, tool started/finished,
+graded, checked, synthesized, verified, finished. The CLI (`acr ask --stream`), the API and
+the UI all consume that one stream.
+
+## Running the API
+
+```bash
+uv run acr serve                 # http://127.0.0.1:8000 — models load once at startup
+```
+
+| Endpoint | What it does |
+|---|---|
+| `POST /api/ask` `{"question": "..."}` | Streams the run as server-sent events; the last event is `finished` with the full answer (or `failed`) |
+| `GET /api/source?path=&start=&end=` | Numbered lines — what a citation points at |
+| `GET /api/index` | Which repository, ref and provider the server answers about |
+| `GET /healthz`, `GET /readyz` | Liveness, and readiness once models are loaded |
+
+`ACR_DEMO_MODE=true` turns on public-demo limits: questions per IP per hour, a daily cap,
+and fewer planning rounds.
 
 ## Model providers
 
