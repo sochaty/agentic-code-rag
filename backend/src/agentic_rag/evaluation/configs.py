@@ -34,8 +34,20 @@ CONFIGS: dict[str, Config] = {
         Config(
             "rerank_only",
             "agent",
-            "Reranker grading only: no LLM for borderline hits",
+            "Reranker grading only: no model call in grading (the default since v1.1)",
             AgentOptions(grading="rerank_only"),
+        ),
+        Config(
+            "llm_grading",
+            "agent",
+            "Borderline hits graded by the cheap model (the v1 default)",
+            AgentOptions(grading="full"),
+        ),
+        Config(
+            "no_follow_up",
+            "agent",
+            "Don't read the code that search hits and graph edges point at (as in v1)",
+            AgentOptions(follow_up=False),
         ),
         Config(
             "no_sufficiency",
@@ -58,4 +70,10 @@ CONFIGS: dict[str, Config] = {
     ]
 }
 
-DEFAULT_SUITE = list(CONFIGS)
+# `--configs all`: every configuration that differs from `full`. Since v1.1 rerank_only *is* the
+# default, so it stays defined (v1's results are labelled with it) but isn't run twice.
+DEFAULT_SUITE = [
+    name
+    for name, c in CONFIGS.items()
+    if name == "full" or c.mode != "agent" or c.options != CONFIGS["full"].options
+]

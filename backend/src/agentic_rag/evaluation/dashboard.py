@@ -18,7 +18,7 @@ from agentic_rag.evaluation.report import ConfigSummary, summarise
 from agentic_rag.evaluation.runner import RunResult
 
 RESAMPLES = 10_000
-SPLITS = ("heldout", "dev", "all")
+SPLITS = ("fresh", "heldout", "dev", "all")
 
 
 class ConfigInfo(BaseModel):

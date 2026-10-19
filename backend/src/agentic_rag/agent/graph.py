@@ -30,7 +30,14 @@ from agentic_rag.agent.answer import (
     verify,
 )
 from agentic_rag.agent.budget import Budget, BudgetTracker
-from agentic_rag.agent.calls import Observation, SemanticSearch, ToolCall, call_key, execute
+from agentic_rag.agent.calls import (
+    Observation,
+    ReadSource,
+    SemanticSearch,
+    ToolCall,
+    call_key,
+    execute,
+)
 from agentic_rag.agent.explore import (
     _BUDGET_STOP,
     MAX_PARALLEL,
@@ -40,6 +47,7 @@ from agentic_rag.agent.explore import (
     StopReason,
     _grade_round,
 )
+from agentic_rag.agent.follow_up import covered, follow_up_reads, shown
 from agentic_rag.agent.options import FULL, AgentOptions
 from agentic_rag.agent.planner import plan_next
 from agentic_rag.agent.router import Route, route_question
@@ -83,20 +91,39 @@ def _gathered(state: State) -> list[Observation]:
     return [obs for r in state.get("rounds", []) for obs in r.observations]
 
 
-def _run_calls(deps: Deps, round_no: int, calls: list[ToolCall]) -> list[Observation]:
+def _run_calls(
+    deps: Deps, round_no: int, calls: list[ToolCall], first_index: int = 0
+) -> list[Observation]:
     """Run calls in parallel, emitting start/finish events as they happen; keep call order."""
     if not calls:
         return []
     for i, call in enumerate(calls):
-        deps.emit(ev.ToolStarted(round=round_no, index=i, call=call))
+        deps.emit(ev.ToolStarted(round=round_no, index=first_index + i, call=call))
     results: list[Observation | None] = [None] * len(calls)
     with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(calls))) as pool:
         futures = {pool.submit(execute, deps.ws, call): i for i, call in enumerate(calls)}
         for future in as_completed(futures):
             i = futures[future]
             results[i] = future.result()
-            deps.emit(ev.ToolFinished(round=round_no, index=i, observation=results[i]))
+            deps.emit(
+                ev.ToolFinished(round=round_no, index=first_index + i, observation=results[i])
+            )
     return [obs for obs in results if obs is not None]
+
+
+def _follow_up(
+    deps: Deps, state: State, round_no: int, observations: list[Observation], earlier: int
+) -> tuple[list[Observation], list[str]]:
+    """Read what this round's evidence points at (agent/follow_up.py); no model call.
+
+    Skipped once the budget is spent: the reads are free to run, but every line they add is
+    paid for again by the synthesizer and verifier.
+    """
+    if not deps.options.follow_up or deps.tracker.exhausted():
+        return observations, []
+    reads: list[ToolCall] = list(follow_up_reads(deps.ws, observations, _gathered(state)))
+    extra = _run_calls(deps, round_no, reads, first_index=earlier)
+    return [*observations, *extra], [call_key(c) for c in reads]
 
 
 def build_graph(deps: Deps) -> Any:
@@ -132,6 +159,7 @@ def build_graph(deps: Deps) -> Any:
                     round=1, grades=grades, rewrites=[(r.original, r.rewritten) for r in rewrites]
                 )
             )
+        observations, _ = _follow_up(deps, state, 1, observations, len(raw))
         only = Round(
             number=1, plan=None, observations=observations, grades=grades, rewrites=rewrites
         )
@@ -152,12 +180,21 @@ def build_graph(deps: Deps) -> Any:
         )
         deps.tracker.charge(usage)
         seen = list(state["seen"])
+        already = shown(_gathered(state))
         fresh: list[ToolCall] = []
         for step in proposed.steps:  # drop repeats, both of earlier rounds and within this one
             key = call_key(step.call)
-            if key not in seen:
-                seen.append(key)
-                fresh.append(step.call)
+            call = step.call
+            if key in seen:
+                continue
+            # A read of lines the agent has mostly seen (by an earlier or follow-up read, or a
+            # semantic hit shown in full) is a repeat too, even with a different range.
+            if isinstance(call, ReadSource) and covered(
+                (call.path, call.start_line, call.end_line), already
+            ):
+                continue
+            seen.append(key)
+            fresh.append(call)
         skipped = len(proposed.steps) - len(fresh)
         deps.emit(ev.Planned(round=number, plan=proposed, skipped_repeats=skipped))
         current = Round(number=number, plan=proposed, observations=[], skipped_repeats=skipped)
@@ -184,6 +221,9 @@ def build_graph(deps: Deps) -> Any:
                     rewrites=[(r.original, r.rewritten) for r in rewrites],
                 )
             )
+        observations, read_keys = _follow_up(
+            deps, state, current.number, observations, len(state["pending"])
+        )
         updated = current.model_copy(
             update={"observations": observations, "grades": grades, "rewrites": rewrites}
         )
@@ -197,7 +237,12 @@ def build_graph(deps: Deps) -> Any:
             stop = "max_rounds"
         elif limit := deps.tracker.exhausted():
             stop = _BUDGET_STOP[limit]
-        return {"rounds": [*state["rounds"][:-1], updated], "stop": stop}
+        return {
+            "rounds": [*state["rounds"][:-1], updated],
+            "stop": stop,
+            # exact repeats of these reads; overlapping ones are caught in plan() by `covered`
+            "seen": [*state["seen"], *read_keys],
+        }
 
     def check(state: State) -> State:
         first = state["rounds"][0].plan

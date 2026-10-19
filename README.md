@@ -167,9 +167,12 @@ via `acr schema`), so the event stream can't drift between the two.
 
 ## Evaluation
 
-`eval/questions.jsonl` holds 79 questions about Flask with gold answers, key facts and gold
-evidence: 31 *dev* questions used while building the agent, and 48 *held-out* questions written
-afterwards and never used to tune it. The held-out numbers are the headline.
+`eval/questions.jsonl` holds 109 questions about Flask with gold answers, key facts and gold
+evidence, in three splits:
+
+- **dev** (31): used while building the agent
+- **held-out** (48): written after v1 was built; v1's headline, and what v1.1 was diagnosed on
+- **fresh** (30): written after v1.1 was built and never used to tune it; the current headline
 
 ```bash
 uv run acr eval check                              # validate the gold evidence against the repo (free)
@@ -181,9 +184,25 @@ uv run acr eval report v1                          # rewrite results.md and dash
 Each answer is graded by a judge model against the gold answer (correct, partial, incorrect,
 or abstained), and the ablations switch off one part of the agent at a time. v1 results:
 [`eval/results/v1/results.md`](eval/results/v1/results.md), or the **Evaluation** page in the UI.
-On the held-out set the full agent scored 84% against 76% for single-pass RAG at 1.5x the cost.
-That gap is *not* statistically significant at 48 questions. Turning off the sufficiency
-check (92%) is the one significant improvement.
+v1 on the held-out set: the agent scored 84% against 76% for single-pass RAG at 1.5x the
+cost, a gap that was *not* statistically significant at 48 questions. Every loss was a
+partial answer: the agent stopped at *where* something is (a call-graph edge, a grep line,
+a search hit cut off at 40 lines) instead of reading *what* the code there does.
+
+v1.1 reads what its evidence points at before deciding it has enough, tells the sufficiency
+check that a location isn't an answer, and asks the synthesizer for conditions and edge cases.
+On the fresh set ([`eval/results/v11/results.md`](eval/results/v11/results.md)):
+
+| | Accuracy (95% interval) | vs naive | $/question | p50 |
+|---|---|---|---|---|
+| Single-pass RAG | 58% [43, 73] | | $0.0064 | 4.0s |
+| Agent v1.1 | 88% [78, 97] | +30 pts [+17, +45], 11 wins / 0 losses | $0.0137 | 20.4s |
+| v1.1 without follow-up reads | 85% [75, 93] | +27 pts [+13, +42] | $0.0108 | 21.9s |
+
+Caveats: the fresh questions were written knowing v1's failure mode, so they ask for more
+detail than the held-out set did (naive drops from 76% to 58%). The follow-up reads alone
+add 3 points (within noise) for 27% more cost; their wins are the call-graph questions they
+were designed for.
 
 ## Use it from Claude Code, Cursor or any MCP client
 
