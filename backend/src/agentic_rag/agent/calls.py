@@ -10,7 +10,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from agentic_rag import tools
-from agentic_rag.tools.graph import Relation
+from agentic_rag.tools.exact import GrepResult
+from agentic_rag.tools.graph import GraphResult, Relation
 from agentic_rag.tools.semantic import Scope, SearchResult
 from agentic_rag.workspace import Workspace
 
@@ -92,9 +93,12 @@ class Observation(BaseModel):
     text: str
     error: str | None = None
     elapsed_ms: int
-    # semantic_search keeps its hits so grading can filter them and re-render `text`. Internal
-    # only: serialised events already carry `text`, and the `graded` event the verdicts.
+    # Structured results, internal only (serialised events already carry `text`): semantic
+    # hits so grading can filter them and re-render; grep hits and graph edges so the agent
+    # can read the code they point at (agent/follow_up.py).
     search: SearchResult | None = Field(default=None, exclude=True)
+    grep: GrepResult | None = Field(default=None, exclude=True)
+    graph: GraphResult | None = Field(default=None, exclude=True)
 
     @property
     def key(self) -> str:
@@ -108,6 +112,8 @@ class Observation(BaseModel):
 def execute(ws: Workspace, call: ToolCall) -> Observation:
     started = time.perf_counter()
     search: SearchResult | None = None
+    grep: GrepResult | None = None
+    graph: GraphResult | None = None
     try:
         match call:
             case SemanticSearch():
@@ -116,15 +122,17 @@ def execute(ws: Workspace, call: ToolCall) -> Observation:
                 )
                 text = search.render()
             case ExactSearch():
-                text = tools.exact_search(
+                grep = tools.exact_search(
                     ws,
                     call.term,
                     include_tests=call.include_tests,
                     path_prefix=call.path_prefix,
                     whole_word=call.whole_word,
-                ).render()
+                )
+                text = grep.render()
             case SymbolGraph():
-                text = tools.symbol_graph(ws, call.symbol, call.relation).render()
+                graph = tools.symbol_graph(ws, call.symbol, call.relation)
+                text = graph.render()
             case GitHistory():
                 text = tools.git_history(ws, call.target, max(1, min(call.limit, 30))).render()
             case ReadSource():
@@ -138,4 +146,12 @@ def execute(ws: Workspace, call: ToolCall) -> Observation:
             + "\n... [truncated: narrow the search, or read_source the exact lines you need]"
         )
     elapsed = int((time.perf_counter() - started) * 1000)
-    return Observation(call=call, text=text, error=error, elapsed_ms=elapsed, search=search)
+    return Observation(
+        call=call,
+        text=text,
+        error=error,
+        elapsed_ms=elapsed,
+        search=search,
+        grep=grep,
+        graph=graph,
+    )

@@ -22,6 +22,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
 }
 
 export const SPLIT_LABELS: Record<string, string> = {
+  fresh: 'Fresh',
   heldout: 'Held-out',
   dev: 'Dev',
   all: 'All',

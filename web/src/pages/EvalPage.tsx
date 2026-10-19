@@ -13,6 +13,7 @@ import { pct, points, usd } from '@/lib/format'
 import { SPLIT_LABELS } from '@/lib/grades'
 
 const SPLIT_NOTES: Record<string, string> = {
+  fresh: 'Written after the latest changes and never used to tune them — the honest numbers.',
   heldout: 'Written after the agent was finished and never used to tune it — the honest numbers.',
   dev: 'Used while building and fixing the agent, so these numbers are optimistic.',
   all: 'Dev and held-out together.',
@@ -41,7 +42,7 @@ export function EvalPage() {
   if (!board.data) return null
 
   const splits = Object.keys(board.data.splits)
-  const split = params.get('split') ?? (splits.includes('heldout') ? 'heldout' : splits[0])
+  const split = params.get('split') ?? ['fresh', 'heldout'].find((s) => splits.includes(s)) ?? splits[0]
   const view = board.data.splits[split]
   const info = runs.data.find((r) => r.id === runId)
 

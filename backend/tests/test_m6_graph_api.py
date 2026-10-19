@@ -12,7 +12,16 @@ from agentic_rag.api.limits import DemoLimiter
 from agentic_rag.config import Settings
 from agentic_rag.workspace import Workspace
 
-from .test_agent_m3 import CALLERS, ConstReranker, ScriptedLLM, _plan, _route, run, sufficiency
+from .test_agent_m3 import (
+    CALLERS,
+    NO_FOLLOW_UP,
+    ConstReranker,
+    ScriptedLLM,
+    _plan,
+    _route,
+    run,
+    sufficiency,
+)
 from .test_agent_m5 import code, draft, verdicts
 
 NORMALIZE = "`normalize` strips whitespace and upper-cases the SKU."
@@ -43,6 +52,7 @@ def test_events_follow_the_run_in_order(sample_ws: Workspace) -> None:
         budget=BIG,
         reranker=ConstReranker(5.0),
         sink=seen.append,
+        options=NO_FOLLOW_UP,  # follow-up reads add tool events; tested on their own
     )
     types = [e.type for e in seen]  # type: ignore[attr-defined]
     assert types == [

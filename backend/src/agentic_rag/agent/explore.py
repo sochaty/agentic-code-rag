@@ -145,10 +145,17 @@ def _grade_round(
             graded_obs.append(obs)
             continue
         # Out of budget: the reranker still runs (it's free); borderline hits stay unverified.
-        # rerank_only: the same, by design: no model call for borderline hits, no rewrite.
-        allowed_llm = None if tracker.exhausted() or options.grading == "rerank_only" else llm
+        # rerank_only: the same for borderline hits by design; the rewrite is its own switch.
+        allowed_llm = None if tracker.exhausted() else llm
         result, usage = grade_and_maybe_rewrite(
-            ws, allowed_llm, cheap_model, reranker, question, obs, options.rewrite
+            ws,
+            allowed_llm,
+            cheap_model,
+            reranker,
+            question,
+            obs,
+            options.rewrite,
+            llm_grading=options.grading == "full",
         )
         tracker.charge(usage)
         graded_obs.append(result.observation)

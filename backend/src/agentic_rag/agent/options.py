@@ -15,9 +15,12 @@ Grading = Literal["full", "rerank_only", "off"]
 @dataclass(frozen=True)
 class AgentOptions:
     use_router: bool = True  # off: skip the router call, always run the full loop
-    grading: Grading = "full"  # rerank_only: no LLM for borderline hits; off: keep every hit
+    # full: borderline reranker scores go to the cheap model. v1's eval found that call bought
+    # nothing measurable, so since v1.1 the reranker decides alone. off: keep every hit.
+    grading: Grading = "rerank_only"
     rewrite: bool = True  # rewrite a query once when every hit was dropped
     sufficiency: bool = True  # off: keep planning until the planner stops or rounds run out
+    follow_up: bool = True  # off: don't read the code that grep hits and graph edges point at
     verify: bool = True  # off: keep every synthesized claim, unchecked
     plan_effort: Effort = "medium"
     synth_effort: Effort = "medium"

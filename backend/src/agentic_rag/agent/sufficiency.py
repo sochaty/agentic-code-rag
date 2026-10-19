@@ -34,6 +34,9 @@ Rules:
   goes for "do the docs say X?": if the searched docs don't mention X, that is the answer.
 - A sub-question only knowledge outside this repository could answer (third-party packages,
   other projects) counts as answered; put "outside the repository" in missing.
+- A location answers "where", not "what", "how" or "when". A call-graph edge or a grep hit
+  shows that something happens at a line, not what the code there does or under which
+  conditions. For those questions, the code or docs that state the answer must be shown.
 - Don't demand more than the question asks for.
 Set sufficient=true only if every sub-question is answered."""
 

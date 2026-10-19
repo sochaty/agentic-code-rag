@@ -120,7 +120,8 @@ def full_report(results: list[RunResult]) -> str:
     """Held-out first (the honest headline), then dev (what we tuned on), then everything."""
     sections = []
     for title, split in [
-        ("Held-out questions (headline: never used for tuning)", "heldout"),
+        ("Fresh questions (written after v1.1; never used for tuning)", "fresh"),
+        ("Held-out questions (written after v1; v1.1 was diagnosed on these)", "heldout"),
         ("Dev questions (used while building; optimistic)", "dev"),
     ]:
         subset = [r for r in results if r.split == split]

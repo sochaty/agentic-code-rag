@@ -33,9 +33,10 @@ class EvalQuestion(BaseModel):
     gold_answer: str
     key_facts: list[str]
     evidence: list[GoldEvidence]
-    # dev: used while building and fixing the agent. heldout: written afterwards and never
-    # used to tune anything; the honest headline numbers come from these.
-    split: Literal["dev", "heldout"] = "dev"
+    # dev: used while building and fixing the agent. heldout: written after v1 was built and
+    # never used to tune it (v1's headline). fresh: written after v1.1 was built, since v1.1
+    # was diagnosed on the held-out failures (v1.1's headline).
+    split: Literal["dev", "heldout", "fresh"] = "dev"
 
 
 def load(path: Path) -> list[EvalQuestion]:

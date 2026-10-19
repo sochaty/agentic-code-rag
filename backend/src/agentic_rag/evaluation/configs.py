@@ -34,8 +34,20 @@ CONFIGS: dict[str, Config] = {
         Config(
             "rerank_only",
             "agent",
-            "Reranker grading only: no LLM for borderline hits",
+            "Reranker grading only: no LLM for borderline hits (the default since v1.1)",
             AgentOptions(grading="rerank_only"),
+        ),
+        Config(
+            "llm_grading",
+            "agent",
+            "Borderline hits graded by the cheap model (the v1 default)",
+            AgentOptions(grading="full"),
+        ),
+        Config(
+            "no_follow_up",
+            "agent",
+            "Don't read the code that search hits and graph edges point at (as in v1)",
+            AgentOptions(follow_up=False),
         ),
         Config(
             "no_sufficiency",

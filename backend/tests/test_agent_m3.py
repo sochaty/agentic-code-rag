@@ -9,6 +9,7 @@ from agentic_rag import tools
 from agentic_rag.agent.budget import Budget
 from agentic_rag.agent.calls import ExactSearch, GitHistory, ReadSource, SymbolGraph, execute
 from agentic_rag.agent.explore import Exploration, explore
+from agentic_rag.agent.options import AgentOptions
 from agentic_rag.agent.planner import Plan
 from agentic_rag.agent.router import Route
 from agentic_rag.agent.structured import complete_structured, extract_json, strict_schema
@@ -55,6 +56,7 @@ def _plan(steps: list[dict[str, Any]], done: bool = False) -> str:
     )
 
 
+NO_FOLLOW_UP = AgentOptions(follow_up=False)
 CALLERS = {"tool": "symbol_graph", "symbol": "normalize", "relation": "callers"}
 GREP = {
     "tool": "exact_search",
@@ -191,7 +193,8 @@ def test_agentic_rounds_feed_observations_back_and_skip_repeats(sample_ws: Works
         sufficiency(False),
         _plan([], done=True),
     )
-    result = run(sample_ws, llm, "who calls normalize?")
+    # follow-up reads are tested in test_v11_follow_up.py; here only the planner's calls count
+    result = run(sample_ws, llm, "who calls normalize?", options=NO_FOLLOW_UP)
 
     assert [len(r.observations) for r in result.rounds] == [2, 1, 0]
     assert [r.skipped_repeats for r in result.rounds] == [1, 1, 0]

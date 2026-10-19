@@ -318,6 +318,9 @@ def eval_run(
     ] = "naive,full",
     limit: Annotated[int | None, typer.Option(help="Only the first N questions.")] = None,
     only: Annotated[str | None, typer.Option(help="Comma-separated question ids.")] = None,
+    split: Annotated[
+        str | None, typer.Option(help="Only questions in this split: dev, heldout or fresh.")
+    ] = None,
     workers: int = 4,
     index: str = "flask",
     redo: Annotated[bool, typer.Option(help="Re-run selected runs even if saved.")] = False,
@@ -330,6 +333,8 @@ def eval_run(
 
     settings = get_settings()
     questions = dataset.load(settings.eval_dir / "questions.jsonl")
+    if split:
+        questions = [q for q in questions if q.split == split]
     if only:
         wanted = set(only.split(","))
         questions = [q for q in questions if q.id in wanted]

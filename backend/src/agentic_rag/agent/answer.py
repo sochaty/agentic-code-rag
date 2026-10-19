@@ -162,13 +162,19 @@ Return:
   fields that don't apply to the citation kind.
 - caveats: limits of the evidence, or anything that relies on knowledge outside the
   repository (say so explicitly).
+- insufficient: true if the observations can't answer the question; then say what is missing
+  in direct_answer instead of guessing.
+
+Completeness: answer every part of the question, and include the details the evidence shows
+that change the answer: conditions and early returns, defaults, fallbacks, exceptions raised,
+signals sent, and per-call overrides. A reader should not need to open the code to learn
+when the answer does not hold.
 
 Absence: when exact searches for several plausible spellings found nothing across the
 repository's files and the docs show nothing relevant, answer "No" plainly and cite those
 searches. Don't hedge that this "doesn't conclusively establish" absence: an exhaustive
 search of the repository is the evidence. Third-party alternatives belong in caveats.
-- insufficient: true if the observations can't answer the question; then say what is missing
-  in direct_answer instead of guessing.
+
 Never state anything the observations don't show."""
 
 VERIFY_SYSTEM = """You check claims about a codebase against the exact source they cite.
