@@ -1,0 +1,20 @@
+sequenceDiagram
+    autonumber
+    actor U as You
+    participant R as Router<br/>(cheap)
+    participant P as Planner<br/>(strong)
+    participant T as Tools
+    participant C as Sufficiency<br/>(cheap)
+    participant S as Synthesizer<br/>(strong)
+    participant V as Verifier<br/>(cheap)
+
+    U->>R: What calls Flask.create_url_adapter?
+    R-->>P: call_graph → full loop (1.6 s)
+    P->>T: symbol_graph(callers)
+    T-->>P: 3 callers: url_for · AppContext.__init__ · RequestContext.__init__
+    Note over T: Follow-up reads, no model call:<br/>app.py:1057-1127 · ctx.py:245-249 · ctx.py:309-335<br/>(4 ms each)
+    T->>C: edges + the code around each call
+    C-->>S: sufficient after round 1 (6.8 s, $0.0014)
+    S->>V: 3 claims, each citing file:line
+    Note over V: re-reads each cited range from disk
+    V-->>U: 3/3 supported · $0.0106 · 19.8 s

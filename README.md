@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M7 — use it from Claude Code, Cursor or any MCP client). Eval and UI are next; follow along or star the repo.
+> **Status:** v1.0 release candidate. On 30 questions it was never tuned on, the agent scored 88% against 58% for single-pass RAG at about 2x the cost ([results and caveats](#evaluation)).
 
 ## Why
 
@@ -14,14 +14,15 @@ Single-pass RAG retrieves once and hopes. That works for "what does `X` do?" and
 %%{init: {"flowchart": {"wrappingWidth": 320}}}%%
 flowchart TD
     Q(["Question"]) --> R("Router · cheap model<br/>classify the question")
-    R -- "lookup · conceptual" --> D["One hybrid search, graded"]
+    R -- "lookup · conceptual" --> D["One hybrid search"]
     R -- "call graph · history · existence" --> P
 
     subgraph INVESTIGATE["Investigate · up to 3 rounds"]
         P["Planner · strong model<br/>sub-questions + tool calls"] --> T["Run tool calls in parallel"]
-        T --> G["Grade semantic hits<br/>reranker first · cheap model if borderline"]
+        T --> G["Grade semantic hits<br/>local reranker, free"]
         G -. "all missed" .-> RW["Rewrite query, retry once"] -.-> G
-        G --> S("All sub-questions answered?<br/>cheap model")
+        G --> F["Follow-up reads · no model call<br/>open what the evidence points at"]
+        F --> S("Every sub-question answered<br/>by code, not just a location?<br/>cheap model")
         S -- "no" --> P
     end
     TL[["semantic_search · exact_search · symbol_graph<br/>git_history · read_source"]] --- T
@@ -31,7 +32,7 @@ flowchart TD
         V -. "unsupported" .-> RP["Targeted re-retrieval, once"] -.-> SY
     end
 
-    D --> SY
+    D --> DF["Follow-up reads"] --> SY
     S -- "yes" --> SY
     V -- "supported" --> A(["Answer · every claim cites file:line,<br/>a commit, or the search that proved absence"])
     B{{"Budget · tokens · seconds · dollars<br/>checked before every model call"}} -.- INVESTIGATE
@@ -39,9 +40,41 @@ flowchart TD
 
 **How to read it:** the router only *classifies* the question; code maps the category to a path,
 so "does X exist?" can never be answered from a single search. Exact search, the call graph,
-history and source reads return precise facts; only fuzzy semantic hits are graded. Claims that
-still fail verification after one repair are removed from the answer and listed, never kept quietly.
+history and source reads return precise facts; only fuzzy semantic hits are graded. After each
+round the agent reads the code its evidence points at (the function around a grep hit, the caller
+around a call-graph edge) before asking whether it has enough, because a location isn't an answer.
+Claims that still fail verification after one repair are removed from the answer and listed,
+never kept quietly.
 The exact LangGraph state machine is in [The agent graph](#the-agent-graph) below.
+
+## In pictures
+
+| | |
+|---|---|
+| ![Single-pass RAG vs the agent, release by release](docs/images/eval-versions.png) | ![Two answers to the same question replayed side by side](docs/images/replay.gif) |
+| **Release by release.** Each version measured on questions it was never tuned on. | **Side by side.** Single-pass RAG answers in 3.5 s and misses a caller; the agent reads the code around each call and gets all three, every claim verified. |
+
+**Architecture:** one local index, five tools, one agent, four ways to use it.
+
+![Architecture](docs/images/architecture.png)
+
+**What v1.1 changed:** v1 lost points by answering from a *location*. v1.1 reads what the evidence points at.
+
+![v1 answered from a location; v1.1 reads the code there](docs/images/location-vs-content.png)
+
+**One real run**, from the fresh eval set: one planned tool call, three follow-up reads, one round, $0.0106.
+
+![Sequence of one run](docs/images/run-sequence.png)
+
+**The numbers** (v1.1 on 30 fresh questions; [all charts](docs/images/)):
+
+| | |
+|---|---|
+| ![Accuracy with 95% intervals](docs/images/eval-v11-fresh-accuracy.png) | ![Accuracy by question category](docs/images/eval-v11-fresh-categories.png) |
+
+All of these are generated: diagrams from `docs/diagrams/*.mmd`, charts from the saved eval
+results (`acr eval charts`), and the GIF from a recorded replay. `docs/render-images.ps1`
+rebuilds the diagrams and charts.
 
 ## Quick start (developers)
 
@@ -86,10 +119,12 @@ query rewrites, the sufficiency check, and why the loop stopped.
 
 How the loop keeps cost down:
 
-- **Grading:** a local cross-encoder (`ms-marco-MiniLM-L-6-v2`) scores every semantic hit.
-  Scores ≥ 3 are kept and ≤ −4 dropped for free; only the band in between goes to the cheap
-  model, in one batched call. Exact search, the call graph, history and source reads are
-  precise, so they aren't graded.
+- **Grading:** a local cross-encoder (`ms-marco-MiniLM-L-6-v2`) scores every semantic hit;
+  clear misses are dropped for free. (v1 sent the borderline band to the cheap model; the eval
+  showed it bought nothing, so it's now an ablation, `llm_grading`.) Exact search, the call
+  graph, history and source reads are precise, so they aren't graded.
+- **Follow-up reads:** up to three `read_source` calls per round for what the evidence points
+  at, decided by code, not a model call.
 - **Rewrite:** if every hit of a search is dropped, the cheap model rewrites the query once.
 - **Sufficiency:** after each round the cheap model checks whether every sub-question is
   answered; if so the loop stops before paying for another planner call.

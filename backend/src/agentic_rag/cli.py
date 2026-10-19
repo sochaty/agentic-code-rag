@@ -406,6 +406,48 @@ def eval_report(run_id: str) -> None:
     typer.echo(_write_reports(run_id))
 
 
+@eval_app.command("charts")
+def eval_charts(
+    runs: Annotated[
+        list[str],
+        typer.Argument(help="run:split[:label], oldest first, e.g. v1:heldout v11:fresh:v1.1"),
+    ],
+    out: Annotated[Path, typer.Option(help="Folder for the SVG files.")] = Path("../docs/images"),
+) -> None:
+    """Draw the eval charts (SVG) from saved dashboards, for the README and the blog (free)."""
+    from agentic_rag.evaluation import charts
+    from agentic_rag.evaluation.store import EvalStore
+
+    settings = get_settings()
+    store = EvalStore(settings.eval_dir / "results", settings.eval_dir / "questions.jsonl")
+    out.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for pair in runs:
+        run_id, _, rest = pair.partition(":")
+        split, _, label = rest.partition(":")
+        label = label or run_id
+        board = store.dashboard(run_id)
+        if board is None or split not in board.splits:
+            raise typer.BadParameter(f"no {split or '?'} split in eval run {run_id!r}")
+        rows.append((label, board, split))
+        name = f"eval-{run_id}-{split}"
+        files = {
+            f"{name}-accuracy.svg": charts.accuracy(board, split, f"Accuracy · {label}"),
+            f"{name}-cost.svg": charts.cost_accuracy(
+                board, split, f"Accuracy against cost · {label}"
+            ),
+            f"{name}-categories.svg": charts.categories(board, split, f"By category · {label}"),
+        }
+        for filename, svg in files.items():
+            (out / filename).write_text(svg, encoding="utf-8", newline="\n")
+            typer.echo(f"wrote {out / filename}")
+    if len(rows) > 1:
+        path = out / "eval-versions.svg"
+        svg = charts.versions(rows, "Single-pass RAG vs the agent, release by release")
+        path.write_text(svg, encoding="utf-8", newline="\n")
+        typer.echo(f"wrote {path}")
+
+
 @eval_app.command("rejudge")
 def eval_rejudge(
     run_id: str,

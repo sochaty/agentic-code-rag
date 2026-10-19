@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { citationLabel, seconds, usd } from '@/lib/format'
 import type { Citation } from '@/state/run'
+import { protectIdentifiers } from '@/lib/markdown'
 
 const VERDICT = {
   supported: { icon: CircleCheck, label: 'verified', className: 'text-primary' },
@@ -34,7 +35,7 @@ function Claim({ claim, onOpen }: { claim: CheckedClaim; onOpen: (c: Citation) =
       <Icon className={`mt-0.5 size-4 shrink-0 ${v.className}`} aria-label={v.label} />
       <div className="min-w-0 space-y-1">
         <div className="markdown text-sm">
-          <Markdown>{claim.text}</Markdown>
+          <Markdown>{protectIdentifiers(claim.text)}</Markdown>
         </div>
         <div className="flex flex-wrap gap-1">
           {citations.map((c) => (
@@ -51,7 +52,7 @@ export function AnswerView({ answer, onOpen }: { answer: AnswerSummary; onOpen: 
     <Card>
       <CardHeader>
         <CardTitle className="text-base leading-relaxed font-normal">
-          <Markdown>{answer.direct_answer}</Markdown>
+          <Markdown>{protectIdentifiers(answer.direct_answer)}</Markdown>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -107,7 +108,7 @@ export function NaiveAnswerView({ answer, onOpen }: { answer: NaiveAnswer; onOpe
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="markdown">
-          <Markdown>{answer.answer}</Markdown>
+          <Markdown>{protectIdentifiers(answer.answer)}</Markdown>
         </div>
         <div className="flex flex-wrap gap-1">
           {cited.map((s) => (

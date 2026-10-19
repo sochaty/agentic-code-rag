@@ -124,3 +124,21 @@ def test_committed_dashboard_works_without_traces(sample_ws: Workspace, tmp_path
         assert not info["has_traces"]
         assert client.get("/api/eval/r1").json()["run_id"] == "r1"
         assert client.get("/api/eval/r1/full/Q0").status_code == 404
+
+
+def test_charts_are_well_formed_svg() -> None:
+    import xml.etree.ElementTree as ET
+
+    from agentic_rag.evaluation import charts
+
+    board = build("r1", _results(), QUESTIONS)
+    drawn = [
+        charts.accuracy(board, "heldout", "Accuracy"),
+        charts.cost_accuracy(board, "heldout", "Cost"),
+        charts.categories(board, "heldout", "Categories"),
+        charts.versions([("v1", board, "heldout"), ("v1.1", board, "all")], "Versions"),
+    ]
+    for svg in drawn:
+        root = ET.fromstring(svg)  # parses: every tag closed, every attribute quoted
+        assert root.tag.endswith("svg") and root.get("viewBox")
+    assert "100% agent" in drawn[3] and "significant" in drawn[3]

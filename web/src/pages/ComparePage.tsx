@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight, Play, Square } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 
@@ -19,6 +19,7 @@ import { CATEGORY_LABELS, gradeStyle } from '@/lib/grades'
 import { cn } from '@/lib/utils'
 import { usePlayback, type Track } from '@/state/playback'
 import { observations, type Citation, type RunState } from '@/state/run'
+import { protectIdentifiers } from '@/lib/markdown'
 
 const NO_TRACKS: Track[] = []
 
@@ -41,6 +42,14 @@ export function ComparePage() {
     [traceA.data, traceB.data],
   )
   const playback = usePlayback(tracks)
+  // ?play=1 starts the replay once both traces load (for shared links and recorded demos).
+  const autoplayed = useRef(false)
+  useEffect(() => {
+    if (params.get('play') === '1' && tracks.length > 0 && !autoplayed.current) {
+      autoplayed.current = true
+      playback.play()
+    }
+  }, [params, tracks, playback])
 
   if (board.isPending) return <Skeleton className="h-96 w-full" />
   if (board.isError) return <p className="text-sm text-destructive">{board.error.message}</p>
@@ -196,7 +205,7 @@ function Column({ config, configs, onPick, cell, result, loading, state, done }:
         {result && !traced &&
           (done ? (
             <div className="markdown text-sm">
-              <Markdown>{result.answer_text}</Markdown>
+              <Markdown>{protectIdentifiers(result.answer_text)}</Markdown>
             </div>
           ) : (
             <div className="space-y-2">

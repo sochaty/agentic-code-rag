@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { parseSse } from '@/api/client'
 import type { Event } from '@/api/model'
 
+import { protectIdentifiers } from '@/lib/markdown'
+
 import { statesAt } from './playback'
 import { initialRun, observations, reduce, replay } from './run'
 
@@ -80,6 +82,14 @@ describe('run reducer', () => {
   })
 })
 
+describe('active stage', () => {
+  it('shows the stage that is running now, not the one that just finished', () => {
+    const at = (type: string) => replay(run.slice(0, run.findIndex((e) => e.type === type) + 1)).active
+    expect(at('checked')).toBe('synthesize') // sufficient: synthesis starts next
+    expect(at('synthesized')).toBe('verify')
+  })
+})
+
 describe('SSE parsing', () => {
   it('splits complete messages and keeps the partial tail', () => {
     const a = 'event: run_created\ndata: {"type":"run_created","id":"x"}\n\n'
@@ -105,5 +115,13 @@ describe('side-by-side playback', () => {
   it('shows finished runs when stopped', () => {
     const [agent] = statesAt(tracks, null)
     expect(agent.status).toBe('finished')
+  })
+})
+
+describe('markdown identifiers', () => {
+  it('keeps dunders from turning into bold text', () => {
+    expect(protectIdentifiers('AppContext.__init__ calls it')).toBe('`AppContext.__init__` calls it')
+    expect(protectIdentifiers('already `RequestContext.__init__` here')).toBe('already `RequestContext.__init__` here')
+    expect(protectIdentifiers('a **bold** word and snake_case stay')).toBe('a **bold** word and snake_case stay')
   })
 })

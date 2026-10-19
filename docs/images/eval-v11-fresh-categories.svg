@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 712 190" width="712" height="190" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="By category · v1.1">
+<title>By category · v1.1</title>
+<rect width="712" height="190" fill="#ffffff"/>
+<text x="20.0" y="30.0" font-size="17" fill="#18181b" weight="600">By category · v1.1</text>
+<text x="20.0" y="52.0" font-size="12" fill="#71717a" >Accuracy by question category · 30 fresh questions</text>
+<text x="186.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Lookup</text>
+<text x="278.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Conceptual</text>
+<text x="370.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Identifier</text>
+<text x="462.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Call graph</text>
+<text x="554.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">History</text>
+<text x="646.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Existence</text>
+<text x="128.0" y="100.0" font-size="13" fill="#18181b" text-anchor="end">naive</text>
+<rect x="142" y="82" width="88" height="26" rx="4" fill="hsl(108, 70%, 78%)"/>
+<text x="186.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">90%</text>
+<rect x="234" y="82" width="88" height="26" rx="4" fill="hsl(60, 70%, 78%)"/>
+<text x="278.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">50%</text>
+<rect x="326" y="82" width="88" height="26" rx="4" fill="hsl(60, 70%, 78%)"/>
+<text x="370.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">50%</text>
+<rect x="418" y="82" width="88" height="26" rx="4" fill="hsl(72, 70%, 78%)"/>
+<text x="462.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">60%</text>
+<rect x="510" y="82" width="88" height="26" rx="4" fill="hsl(72, 70%, 78%)"/>
+<text x="554.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">60%</text>
+<rect x="602" y="82" width="88" height="26" rx="4" fill="hsl(48, 70%, 78%)"/>
+<text x="646.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">40%</text>
+<text x="128.0" y="130.0" font-size="13" fill="#18181b" text-anchor="end">full</text>
+<rect x="142" y="112" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="186.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="234" y="112" width="88" height="26" rx="4" fill="hsl(72, 70%, 78%)"/>
+<text x="278.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">60%</text>
+<rect x="326" y="112" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="370.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="418" y="112" width="88" height="26" rx="4" fill="hsl(108, 70%, 78%)"/>
+<text x="462.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">90%</text>
+<rect x="510" y="112" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="554.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="602" y="112" width="88" height="26" rx="4" fill="hsl(96, 70%, 78%)"/>
+<text x="646.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">80%</text>
+<text x="128.0" y="160.0" font-size="13" fill="#18181b" text-anchor="end">no_follow_up</text>
+<rect x="142" y="142" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="186.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="234" y="142" width="88" height="26" rx="4" fill="hsl(60, 70%, 78%)"/>
+<text x="278.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">50%</text>
+<rect x="326" y="142" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="370.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="418" y="142" width="88" height="26" rx="4" fill="hsl(84, 70%, 78%)"/>
+<text x="462.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">70%</text>
+<rect x="510" y="142" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="554.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="602" y="142" width="88" height="26" rx="4" fill="hsl(108, 70%, 78%)"/>
+<text x="646.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">90%</text>
+</svg>
