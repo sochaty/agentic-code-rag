@@ -2,7 +2,7 @@
 
 Ask questions about a Python codebase and get answers you can check. An agent decides how to search — by meaning, exact names, the call graph, or git history — throws out weak evidence, tries again when it misses, and cites `file:line` for every claim. And it stops when it hits the budget you set.
 
-> **Status:** early development (M6 — the agent runs as a service and streams every step). MCP, eval and UI are next; follow along or star the repo.
+> **Status:** early development (M7 — use it from Claude Code, Cursor or any MCP client). Eval and UI are next; follow along or star the repo.
 
 ## Why
 
@@ -137,6 +137,38 @@ uv run acr serve                 # http://127.0.0.1:8000 — models load once at
 
 `ACR_DEMO_MODE=true` turns on public-demo limits: questions per IP per hour, a daily cap,
 and fewer planning rounds.
+
+## Use it from Claude Code, Cursor or any MCP client
+
+`acr mcp` serves the five tools plus `ask` over the [Model Context Protocol](https://modelcontextprotocol.io).
+The five tools only read the local index (free, marked read-only); `ask` runs the full agent
+and calls your model provider.
+
+**Claude Code**
+
+```bash
+claude mcp add agentic-code-rag -- uv --directory /path/to/agentic-code-rag/backend run acr mcp
+```
+
+**Cursor** (`.cursor/mcp.json`) or **Claude Desktop** (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "agentic-code-rag": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/agentic-code-rag/backend", "run", "acr", "mcp"]
+    }
+  }
+}
+```
+
+Then ask your assistant things like *"use agentic-code-rag to find who calls
+handle_user_exception"*. Serve a different index with `acr mcp --index myrepo`, or over HTTP
+with `acr mcp --transport http` (`http://127.0.0.1:8001/mcp`).
+
+The API server, the MCP server and the CLI can all run at once against the same index:
+vectors are plain files (`vectors.npy`), not a database holding a lock.
 
 ## Model providers
 

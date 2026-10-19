@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from agentic_rag import tools
 from agentic_rag.search.text import tokenize
 from agentic_rag.workspace import Workspace
@@ -137,3 +139,50 @@ def test_read_source_refuses_escapes_and_bad_ranges(sample_ws: Workspace) -> Non
     assert "only 9 lines" in tools.read_source(sample_ws, "src/shop/util.py", 50).render()
     clamped = tools.read_source(sample_ws, "src/shop/util.py", 8, 500)
     assert (clamped.start_line, clamped.end_line) == (8, 9)
+
+
+def test_vector_index_is_readable_by_many_processes_at_once(
+    sample_ws: Workspace, tmp_path: Path
+) -> None:
+    """Regression: local Qdrant locked the index, so `acr serve` blocked `acr mcp`."""
+    from agentic_rag.search.embed import HashEmbedder
+    from agentic_rag.search.engine import SearchEngine, build_vectors
+
+    chunks = sample_ws.index.chunks
+    build_vectors(chunks, HashEmbedder(), tmp_path)
+    first = SearchEngine(chunks, tmp_path, HashEmbedder())
+    second = SearchEngine(chunks, tmp_path, HashEmbedder())  # would raise AlreadyLocked before
+    assert [h.chunk.id for h in first.dense("normalize sku", 3)] == [
+        h.chunk.id for h in second.dense("normalize sku", 3)
+    ]
+
+
+def test_legacy_qdrant_index_migrates_without_reembedding(tmp_path: Path) -> None:
+    import json
+
+    import numpy as np
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, PointStruct, VectorParams
+
+    from agentic_rag.search.engine import migrate_legacy_qdrant
+
+    client = QdrantClient(path=str(tmp_path))
+    client.create_collection(
+        "chunks", vectors_config=VectorParams(size=2, distance=Distance.COSINE)
+    )
+    client.upsert(
+        "chunks",
+        points=[
+            PointStruct(id=0, vector=[3.0, 4.0], payload={"chunk_id": "a"}),
+            PointStruct(id=1, vector=[0.0, 2.0], payload={"chunk_id": "b"}),
+        ],
+    )
+    client.close()
+    (tmp_path / "embedding.json").write_text(json.dumps({"model": "hash", "dim": 2}))
+
+    assert migrate_legacy_qdrant(tmp_path) is True
+    assert migrate_legacy_qdrant(tmp_path) is False  # only once
+    ids = json.loads((tmp_path / "ids.json").read_text())
+    matrix = np.load(tmp_path / "vectors.npy")
+    assert sorted(ids) == ["a", "b"]
+    assert np.allclose(np.linalg.norm(matrix, axis=1), 1.0)

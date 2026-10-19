@@ -10,6 +10,7 @@ dependencies = [
   "fastapi>=0.146.0",
   "fastembed>=0.9.0",
   "langgraph>=1.2.16",
+  "mcp[cli]>=2.3.0",
   "openai>=3.35.1",
   "pydantic>=2.9",
   "pydantic-settings>=2.6",

@@ -5,7 +5,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import typer
 
@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from agentic_rag.agent.budget import Budget
     from agentic_rag.config import Settings
     from agentic_rag.llm import LLM
+
+Transport = Literal["stdio", "http"]
 
 app = typer.Typer(help="Agentic RAG over codebases.", no_args_is_help=True)
 corpus_app = typer.Typer(help="Manage the pinned corpora in corpora.toml.", no_args_is_help=True)
@@ -259,3 +261,21 @@ def serve(
     from agentic_rag.api.app import create_app
 
     uvicorn.run(create_app(get_settings()), host=host, port=port)
+
+
+@app.command()
+def mcp(
+    transport: Annotated[
+        Transport, typer.Option(help="stdio (desktop clients) or http.")
+    ] = "stdio",
+    index: Annotated[str | None, typer.Option(help="Index to serve (default: ACR_INDEX).")] = None,
+    host: str = "127.0.0.1",
+    port: int = 8001,
+) -> None:
+    """Run the MCP server: the five tools plus `ask`, for Claude Code, Cursor and others."""
+    from agentic_rag.mcp_server import serve as serve_mcp
+
+    settings = get_settings()
+    if index:
+        settings = settings.model_copy(update={"index": index})
+    serve_mcp(settings, transport, host, port)
