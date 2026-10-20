@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 712 340" width="712" height="340" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="By category · v1">
+<title>By category · v1</title>
+<rect width="712" height="340" fill="#ffffff"/>
+<text x="20.0" y="30.0" font-size="17" fill="#18181b" weight="600">By category · v1</text>
+<text x="20.0" y="52.0" font-size="12" fill="#71717a" >Accuracy by question category · 48 held-out questions</text>
+<text x="186.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Lookup</text>
+<text x="278.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Conceptual</text>
+<text x="370.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Identifier</text>
+<text x="462.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Call graph</text>
+<text x="554.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">History</text>
+<text x="646.0" y="70.0" font-size="12" fill="#71717a" text-anchor="middle">Existence</text>
+<text x="128.0" y="100.0" font-size="13" fill="#18181b" text-anchor="end">naive</text>
+<rect x="142" y="82" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="186.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="234" y="82" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="278.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="326" y="82" width="88" height="26" rx="4" fill="hsl(60, 70%, 78%)"/>
+<text x="370.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">50%</text>
+<rect x="418" y="82" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="462.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="510" y="82" width="88" height="26" rx="4" fill="hsl(74, 70%, 78%)"/>
+<text x="554.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">62%</text>
+<rect x="602" y="82" width="88" height="26" rx="4" fill="hsl(74, 70%, 78%)"/>
+<text x="646.0" y="100.0" font-size="12" fill="#18181b" text-anchor="middle">62%</text>
+<text x="128.0" y="130.0" font-size="13" fill="#18181b" text-anchor="end">full</text>
+<rect x="142" y="112" width="88" height="26" rx="4" fill="hsl(90, 70%, 78%)"/>
+<text x="186.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">75%</text>
+<rect x="234" y="112" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="278.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="326" y="112" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="370.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="418" y="112" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="112" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="112" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="646.0" y="130.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<text x="128.0" y="160.0" font-size="13" fill="#18181b" text-anchor="end">no_router</text>
+<rect x="142" y="142" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="142" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="278.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="326" y="142" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="370.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="418" y="142" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="142" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="142" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="646.0" y="160.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<text x="128.0" y="190.0" font-size="13" fill="#18181b" text-anchor="end">no_grading</text>
+<rect x="142" y="172" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="172" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="278.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="326" y="172" width="88" height="26" rx="4" fill="hsl(90, 70%, 78%)"/>
+<text x="370.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">75%</text>
+<rect x="418" y="172" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="172" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="172" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="646.0" y="190.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<text x="128.0" y="220.0" font-size="13" fill="#18181b" text-anchor="end">rerank_only</text>
+<rect x="142" y="202" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="202" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="278.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="326" y="202" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="370.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="418" y="202" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="202" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="202" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="646.0" y="220.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<text x="128.0" y="250.0" font-size="13" fill="#18181b" text-anchor="end">no_sufficiency</text>
+<rect x="142" y="232" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="232" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="278.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="326" y="232" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="370.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="418" y="232" width="88" height="26" rx="4" fill="hsl(120, 70%, 78%)"/>
+<text x="462.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">100%</text>
+<rect x="510" y="232" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="232" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="646.0" y="250.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<text x="128.0" y="280.0" font-size="13" fill="#18181b" text-anchor="end">no_verify</text>
+<rect x="142" y="262" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="262" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="278.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="326" y="262" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="370.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="418" y="262" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="262" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="262" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="646.0" y="280.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<text x="128.0" y="310.0" font-size="13" fill="#18181b" text-anchor="end">low_effort</text>
+<rect x="142" y="292" width="88" height="26" rx="4" fill="hsl(97, 70%, 78%)"/>
+<text x="186.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">81%</text>
+<rect x="234" y="292" width="88" height="26" rx="4" fill="hsl(90, 70%, 78%)"/>
+<text x="278.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">75%</text>
+<rect x="326" y="292" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="370.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="418" y="292" width="88" height="26" rx="4" fill="hsl(106, 70%, 78%)"/>
+<text x="462.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">88%</text>
+<rect x="510" y="292" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="554.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+<rect x="602" y="292" width="88" height="26" rx="4" fill="hsl(113, 70%, 78%)"/>
+<text x="646.0" y="310.0" font-size="12" fill="#18181b" text-anchor="middle">94%</text>
+</svg>

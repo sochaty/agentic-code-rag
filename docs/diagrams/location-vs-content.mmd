@@ -1,0 +1,19 @@
+%%{init: {"flowchart": {"wrappingWidth": 220}}}%%
+flowchart TB
+    subgraph V1["v1 · answered from a location"]
+        direction LR
+        A1["symbol_graph<br/>callers of dispatch_request"] --> B1["edge: full_dispatch_request<br/>app.py:917"] --> C1{"enough?"} -- "yes, a caller<br/>was found" --> D1["✗ Partial answer<br/>misses: only called when<br/>preprocess_request returned None"]
+    end
+
+    subgraph V11["v1.1 · reads what the evidence points at"]
+        direction LR
+        A2["symbol_graph<br/>callers of dispatch_request"] --> B2["edge: full_dispatch_request<br/>app.py:917"] --> R2["follow-up read<br/>app.py:904-920<br/>no model call"] --> C2{"answered by code,<br/>not a location?"} -- "yes" --> D2["✓ Complete answer<br/>if rv is None:<br/>rv = self.dispatch_request()"]
+    end
+
+    V1 ~~~ V11
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#111
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#111
+    classDef auto fill:#e0f2fe,stroke:#0284c7,color:#111
+    class D1 bad
+    class D2 good
+    class R2 auto

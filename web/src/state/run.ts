@@ -92,6 +92,13 @@ function visit(state: RunState, stage: Stage): Pick<RunState, 'active' | 'visite
   }
 }
 
+/** A stage finished and the next one began: nodes emit when they finish, not when they start. */
+function advance(state: RunState, done: Stage, next: Stage): Pick<RunState, 'active' | 'visited'> {
+  const visited = [...state.visited]
+  for (const stage of [done, next]) if (!visited.includes(stage)) visited.push(stage)
+  return { active: next, visited }
+}
+
 function round(state: RunState, number: number): RoundView {
   return (
     state.rounds.find((r) => r.number === number) ?? {
@@ -179,14 +186,15 @@ export function reduce(state: RunState, event: Event): RunState {
       return {
         ...base,
         rounds: withRound(base, { ...r, sufficiency: event.sufficiency }),
-        ...visit(base, 'check'),
+        ...advance(base, 'check', event.sufficiency.sufficient ? 'synthesize' : 'plan'),
       }
     }
     case 'exploration_done':
-      return { ...base, stopReason: event.stop_reason }
+      return { ...base, stopReason: event.stop_reason, ...visit(base, 'synthesize') }
     case 'synthesized':
-      return { ...base, syntheses: [...base.syntheses, event], ...visit(base, 'synthesize') }
+      return { ...base, syntheses: [...base.syntheses, event], ...advance(base, 'synthesize', 'verify') }
     case 'verified':
+      // `repairing` or `finished` comes next, so verify stays active until then
       return { ...base, verifications: [...base.verifications, event], ...visit(base, 'verify') }
     case 'repairing':
       return { ...base, repair: event, ...visit(base, 'repair') }

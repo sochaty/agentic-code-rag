@@ -1,0 +1,32 @@
+%%{init: {"flowchart": {"wrappingWidth": 240}}}%%
+flowchart TB
+    subgraph INGEST["acr ingest · once per repo"]
+        direction LR
+        REPO[("Git repository")] --> TS["tree-sitter<br/>language plugins"] & DOCS["Docs & changelog<br/>split by heading"] & LOG["git log<br/>full history"]
+    end
+
+    subgraph INDEX["Local index · plain files, no database"]
+        direction LR
+        CH["Chunks<br/>code · doc · changelog"] --> VE["vectors.npy + BM25<br/>fastembed on CPU"]
+        SY["Symbols + call graph<br/>with resolution labels"]
+        CO["Commits"]
+    end
+
+    TS --> CH & SY
+    DOCS --> CH
+    LOG --> CO
+
+    subgraph TOOLS["Five tools"]
+        direction LR
+        T1["semantic_search"] ~~~ T2["exact_search"] ~~~ T3["symbol_graph"] ~~~ T4["git_history"] ~~~ T5["read_source"]
+    end
+
+    INDEX --> TOOLS
+    TOOLS --> AG["Agent · LangGraph state machine<br/>route · plan · read · check · answer · verify"]
+    LLM(["Models: OpenAI · Anthropic ·<br/>any OpenAI-compatible"]) -.-> AG
+
+    subgraph SURFACES["Ways to use it"]
+        direction LR
+        CLI["acr CLI"] ~~~ API["FastAPI · SSE events"] ~~~ WEB["React UI<br/>live trace · replay · eval"] ~~~ MCP["MCP server<br/>Claude Code · Cursor"]
+    end
+    AG --> SURFACES

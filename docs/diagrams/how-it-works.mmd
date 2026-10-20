@@ -1,0 +1,25 @@
+%%{init: {"flowchart": {"wrappingWidth": 320}}}%%
+flowchart TD
+    Q(["Question"]) --> R("Router · cheap model<br/>classify the question")
+    R -- "lookup · conceptual" --> D["One hybrid search"]
+    R -- "call graph · history · existence" --> P
+
+    subgraph INVESTIGATE["Investigate · up to 3 rounds"]
+        P["Planner · strong model<br/>sub-questions + tool calls"] --> T["Run tool calls in parallel"]
+        T --> G["Grade semantic hits<br/>local reranker, free"]
+        G -. "all missed" .-> RW["Rewrite query, retry once"] -.-> G
+        G --> F["Follow-up reads · no model call<br/>open what the evidence points at"]
+        F --> S("Every sub-question answered<br/>by code, not just a location?<br/>cheap model")
+        S -- "no" --> P
+    end
+    TL[["semantic_search · exact_search · symbol_graph<br/>git_history · read_source"]] --- T
+
+    subgraph ANSWER["Answer"]
+        SY["Synthesize · strong model<br/>bottom line + cited claims"] --> V("Verify each claim against<br/>the cited lines, re-read from disk")
+        V -. "unsupported" .-> RP["Targeted re-retrieval, once"] -.-> SY
+    end
+
+    D --> DF["Follow-up reads"] --> SY
+    S -- "yes" --> SY
+    V -- "supported" --> A(["Answer · every claim cites file:line,<br/>a commit, or the search that proved absence"])
+    B{{"Budget · tokens · seconds · dollars<br/>checked before every model call"}} -.- INVESTIGATE
