@@ -87,6 +87,24 @@ class Workspace:
         hits = [title for start, end, title in spans if start <= line <= end]
         return hits[-1] if hits else None
 
+    def section_span(self, path: str, line: int) -> tuple[int, int] | None:
+        """The innermost doc/changelog section around a line, as (start, end)."""
+        spans = [(s, e) for s, e, _ in self._sections.get(path, []) if s <= line <= e]
+        return min(spans, key=lambda span: span[1] - span[0]) if spans else None
+
+    @cached_property
+    def _functions(self) -> dict[str, list[Symbol]]:
+        by_path: dict[str, list[Symbol]] = {}
+        for s in self.index.symbols:
+            if s.kind in ("function", "method"):
+                by_path.setdefault(s.path, []).append(s)
+        return by_path
+
+    def function_at(self, path: str, line: int) -> Symbol | None:
+        """The innermost function or method containing a line, if any."""
+        inside = [s for s in self._functions.get(path, []) if s.start_line <= line <= s.end_line]
+        return min(inside, key=lambda s: s.end_line - s.start_line) if inside else None
+
     @cached_property
     def files(self) -> list[PurePosixPath]:
         return pipeline.discover(self.repo)

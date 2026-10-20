@@ -319,7 +319,8 @@ def eval_run(
     limit: Annotated[int | None, typer.Option(help="Only the first N questions.")] = None,
     only: Annotated[str | None, typer.Option(help="Comma-separated question ids.")] = None,
     split: Annotated[
-        str | None, typer.Option(help="Only questions in this split: dev, heldout or fresh.")
+        Literal["dev", "heldout", "fresh"] | None,
+        typer.Option(help="Only questions in this split."),
     ] = None,
     workers: int = 4,
     index: str = "flask",
@@ -328,7 +329,7 @@ def eval_run(
 ) -> None:
     """Run configurations x questions, judge every answer, save per-run JSON. Resumable."""
     from agentic_rag.evaluation import dataset
-    from agentic_rag.evaluation.configs import CONFIGS
+    from agentic_rag.evaluation.configs import CONFIGS, DEFAULT_SUITE
     from agentic_rag.evaluation.runner import run_one, run_suite
 
     settings = get_settings()
@@ -339,7 +340,9 @@ def eval_run(
         wanted = set(only.split(","))
         questions = [q for q in questions if q.id in wanted]
     questions = questions[:limit] if limit else questions
-    names = list(CONFIGS) if configs == "all" else configs.split(",")
+    if not questions:
+        raise typer.BadParameter("no questions match --split/--only/--limit")
+    names = DEFAULT_SUITE if configs == "all" else configs.split(",")
     unknown = [n for n in names if n not in CONFIGS]
     if unknown:
         raise typer.BadParameter(f"unknown configs {unknown}; choose from {list(CONFIGS)}")

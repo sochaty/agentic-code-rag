@@ -6,6 +6,7 @@ import pytest
 from agentic_rag.agent.budget import Budget, BudgetTracker
 from agentic_rag.agent.calls import SemanticSearch, execute
 from agentic_rag.agent.grade import IRRELEVANT_AT, RELEVANT_AT, filter_observation, grade_hits
+from agentic_rag.agent.options import AgentOptions
 from agentic_rag.llm import Usage
 from agentic_rag.search.rerank import OverlapReranker
 from agentic_rag.workspace import Workspace
@@ -129,7 +130,14 @@ def test_all_misses_trigger_one_rewrite(sample_ws: Workspace) -> None:
         _plan([SEMANTIC], done=True),
         json.dumps({"query": "upper strip sku"}),  # the rewrite
     )
-    result = run(sample_ws, llm, "q", reranker=ConstReranker(IRRELEVANT_AT - 1))
+    # the rewrite is part of LLM grading; the default (rerank_only) makes no model call at all
+    result = run(
+        sample_ws,
+        llm,
+        "q",
+        reranker=ConstReranker(IRRELEVANT_AT - 1),
+        options=AgentOptions(grading="full"),
+    )
     rnd = result.rounds[0]
     assert [(r.original, r.rewritten) for r in rnd.rewrites] == [
         ("normalize sku", "upper strip sku")
