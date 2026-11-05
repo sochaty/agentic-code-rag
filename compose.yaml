@@ -1,0 +1,25 @@
+# docker compose up --build   ->   http://localhost:8000
+#
+# Needs a model provider key in .env next to this file, e.g.  OPENAI_API_KEY=sk-...
+# (or ACR_PROVIDER=anthropic + ANTHROPIC_API_KEY=...). The first start clones Flask and
+# downloads its prebuilt index into the acr-data volume; later starts reuse it.
+services:
+  acr:
+    build: .
+    image: agentic-code-rag:local
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ACR_INDEX: flask
+      # Container paths win over any local-dev values in .env (environment beats env_file).
+      ACR_DATA_DIR: /data
+      ACR_MODELS_PATH: /opt/models
+    volumes:
+      - acr-data:/data
+    restart: unless-stopped
+
+volumes:
+  acr-data:

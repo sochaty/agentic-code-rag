@@ -1,0 +1,21 @@
+# Only what the image needs: backend source, the built web app, corpora.toml and the eval
+# questions + committed dashboards. Data, models, traces and build output stay outside.
+.git
+.github
+.env
+.env.*
+data/
+dist/
+docs/
+**/node_modules
+**/__pycache__
+**/.venv
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+web/dist
+# Raw eval traces stay out; the committed summaries go in. Unlike .gitignore, a trailing slash
+# doesn't limit a pattern to folders here, so the files need their own exceptions.
+eval/results/*/*
+!eval/results/*/dashboard.json
+!eval/results/*/results.md

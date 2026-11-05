@@ -16,6 +16,9 @@ class CorpusSpec:
     ref: str
     license: str
     languages: tuple[str, ...]
+    # A prebuilt index for this ref (a release asset) and its SHA-256: `acr index pull`.
+    index_url: str | None = None
+    index_sha256: str | None = None
 
 
 def load_specs(corpora_file: Path) -> dict[str, CorpusSpec]:
@@ -27,6 +30,8 @@ def load_specs(corpora_file: Path) -> dict[str, CorpusSpec]:
             ref=entry["ref"],
             license=entry["license"],
             languages=tuple(entry.get("languages", [])),
+            index_url=entry.get("index_url"),
+            index_sha256=entry.get("index_sha256"),
         )
         for name, entry in raw.items()
     }

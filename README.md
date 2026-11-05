@@ -76,21 +76,38 @@ All of these are generated: diagrams from `docs/diagrams/*.mmd`, charts from the
 results (`acr eval charts`), and the GIF from a recorded replay. `docs/render-images.ps1`
 rebuilds the diagrams and charts.
 
+## Quick start
+
+You need [Docker](https://docs.docker.com/get-docker/) and an API key for a model provider
+(OpenAI by default; [others work too](#model-providers)).
+
+```bash
+git clone https://github.com/sochaty/agentic-code-rag && cd agentic-code-rag
+echo "OPENAI_API_KEY=sk-..." > .env
+docker compose up --build        # then open http://localhost:8000
+```
+
+The first start clones Flask (the demo codebase) and downloads its prebuilt index into a Docker
+volume, about a minute; later starts take seconds. A question costs about one US cent.
+Or pull the published image instead of building it:
+`docker run -p 8000:8000 --env-file .env -v acr-data:/data ghcr.io/sochaty/agentic-code-rag`.
+
 ## Quick start (developers)
 
-Requires [uv](https://docs.astral.sh/uv/) and git.
+Requires [uv](https://docs.astral.sh/uv/), git, and Node 22 + pnpm for the web UI.
 
 ```bash
 cd backend
 uv sync                      # creates .venv and installs everything
-uv run acr corpus fetch flask  # clones Flask 3.1.3 (the demo corpus) into data/corpora
-uv run acr ingest flask      # chunks + symbol graph + history, then embeddings -> data/indexes/flask
+uv run acr setup flask       # clones Flask 3.1.3 and downloads its prebuilt index (seconds)
+uv run acr ask flask "who ends up calling handle_user_exception?"
 uv run poe check             # lint, format check, type check, tests
 ```
 
-`acr ingest` also takes a path to any local git repo: `uv run acr ingest D:\path\to\repo`.
-Embedding runs locally on CPU (FastEmbed, `bge-small-en-v1.5`, ~67 MB download once). For Flask's
-2,176 chunks that took 22 minutes on a laptop CPU (one-time per index); `--no-embed` skips it.
+To index another repository, build it locally: `uv run acr ingest D:\path	o
+epo`. Embedding
+runs on CPU (FastEmbed, `bge-small-en-v1.5`, ~67 MB download once): Flask's 2,176 chunks took
+22 minutes on a laptop, which is why Flask ships prebuilt. `--no-embed` skips embedding.
 
 ## The tools
 
@@ -108,7 +125,9 @@ uv run acr ask    flask "what does preprocess_request do?" --naive          # si
 uv run acr explore flask "does Flask have built-in rate limiting?"          # the investigation only
 ```
 
-`acr ask` writes the answer as a bottom line plus separate claims, each citing `file:line`, a
+In a terminal, `acr ask` shows a live status line while it works, then the answer with a
+✓ / ~ / ✗ per claim (`--trace` adds the investigation as a tree; `--plain` prints plain text
+for scripts). `acr ask` writes the answer as a bottom line plus separate claims, each citing `file:line`, a
 commit, or the search that proved something absent. Every claim is then checked against the
 cited lines **re-read from disk**; unsupported claims trigger one targeted re-retrieval, and
 anything that still fails is removed and listed under "Removed" rather than kept quietly.
@@ -314,10 +333,26 @@ Language support is a plugin (`languages/base.py`); Python is the only one in v1
 
 | Release | Scope |
 |---|---|
-| v1.0 | Python codebases · agent loop · MCP server · React trace UI · ablation eval · Docker Compose · public demo |
+| v1.0 | Python codebases · agent loop · MCP server · React trace UI · ablation eval · Docker image + Compose · prebuilt index |
+| v1.0.x | Public demo on Fly.io, linked from the blog |
 | v1.1 | Helm chart · AWS (ECS Fargate + Bedrock) |
 | v2.0 | Go, C#, TypeScript, Angular |
 | v2.1 | Terraform, Kubernetes, GitHub Actions, Bash — and the links between them |
+
+## Releasing
+
+Maintainer steps for a version tag (CI does the image; the index is uploaded by hand because
+its checksum is pinned in `corpora.toml`):
+
+```bash
+cd backend
+uv run acr index pack flask --out ../dist      # reproducible: prints the sha256 in corpora.toml
+git tag v1.0.0 && git push origin v1.0.0       # .github/workflows/release.yml pushes the image
+gh release create v1.0.0 ../dist/flask-3.1.3-index.tar.gz --verify-tag --generate-notes
+```
+
+If the index changes (new ref, new embedding model, re-ingest), update `index_url` and
+`index_sha256` in `corpora.toml` from the `pack` output before tagging.
 
 ## Prior work
 

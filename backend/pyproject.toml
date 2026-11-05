@@ -1,6 +1,6 @@
 [project]
 name = "agentic-code-rag"
-version = "0.0.1"
+version = "1.0.0"
 description = "Ask questions about a codebase and get answers you can check."
 license = "MIT"
 authors = [{ name = "Sourish Chakraborty" }]
