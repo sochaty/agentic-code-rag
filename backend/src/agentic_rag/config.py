@@ -42,6 +42,9 @@ class Settings(BaseSettings):
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    # Where the embedding and reranker models are cached. Defaults to <data>/models; the Docker
+    # image bakes them in elsewhere so a mounted data volume doesn't hide them.
+    models_path: Path | None = None
 
     # API server (`acr serve`).
     index: str = "flask"  # which index the server answers questions about
@@ -93,7 +96,7 @@ class Settings(BaseSettings):
 
     @property
     def models_dir(self) -> Path:
-        return self._data_root / "models"
+        return self.models_path or self._data_root / "models"
 
 
 @lru_cache

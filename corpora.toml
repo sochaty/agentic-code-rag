@@ -8,3 +8,7 @@ url = "https://github.com/pallets/flask.git"
 ref = "3.1.3"
 license = "BSD-3-Clause"
 languages = ["python"]
+# Prebuilt index for this ref (`acr index pull flask`, used by `acr setup` and Docker): built with
+# `acr index pack flask` (reproducible, so the hash below is checked on download).
+index_url = "https://github.com/sochaty/agentic-code-rag/releases/download/v1.0.0/flask-3.1.3-index.tar.gz"
+index_sha256 = "44588242049fa0e6e11e38cb7e496152cf53e6e336dfd54ee00aa9c617a602d5"

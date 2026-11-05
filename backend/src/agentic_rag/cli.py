@@ -2,10 +2,10 @@
 
 import json
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import typer
 
@@ -101,6 +101,102 @@ def ingest(
     typer.echo(f"wrote {out_dir}")
 
 
+index_app = typer.Typer(help="Prebuilt indexes: pack one, or download one.", no_args_is_help=True)
+app.add_typer(index_app, name="index")
+models_app = typer.Typer(help="The local embedding and reranker models.", no_args_is_help=True)
+app.add_typer(models_app, name="models")
+
+
+@index_app.command("pack")
+def index_pack(
+    name: IndexName,
+    out: Annotated[Path, typer.Option(help="Folder for the archive.")] = Path("dist"),
+) -> None:
+    """Pack an index into a reproducible release asset, and print its SHA-256."""
+    from agentic_rag.bundle import pack
+
+    path, sha = pack(get_settings().indexes_dir / name, out)
+    typer.echo(f"{path}  ({path.stat().st_size / 1e6:.1f} MB)")
+    typer.echo(f"sha256 {sha}")
+    typer.echo("Upload it as a release asset, then set index_url and index_sha256 in corpora.toml.")
+
+
+@index_app.command("pull")
+def index_pull(
+    name: IndexName,
+    force: Annotated[bool, typer.Option(help="Replace an existing index.")] = False,
+) -> None:
+    """Download the prebuilt index pinned in corpora.toml (instead of embedding locally)."""
+    import tempfile
+
+    from agentic_rag.bundle import BundleError, download, install
+
+    settings = get_settings()
+    spec = corpus.load_specs(settings.corpora_file).get(name)
+    if spec is None or not spec.index_url or not spec.index_sha256:
+        raise typer.BadParameter(
+            f"no prebuilt index for {name!r} in corpora.toml; use `acr ingest`"
+        )
+    index_dir = settings.indexes_dir / name
+    if (index_dir / "manifest.json").exists() and not force:
+        typer.echo(f"{index_dir} already exists (use --force to replace it)")
+        return
+    index_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp) / "index.tar.gz"
+        typer.echo(f"downloading {spec.index_url}")
+        download(spec.index_url, archive)
+        try:
+            manifest = install(
+                archive,
+                spec.index_sha256,
+                index_dir,
+                ref=spec.ref,
+                embedding_model=settings.embedding_model,
+            )
+        except BundleError as error:
+            raise typer.BadParameter(str(error)) from error
+    typer.echo(f"{name} @ {manifest['ref']} -> {index_dir}")
+
+
+@models_app.command("fetch")
+def models_fetch() -> None:
+    """Download the embedding and reranker models now, instead of on the first question."""
+    from agentic_rag.search.embed import FastEmbedder
+    from agentic_rag.search.rerank import CrossEncoderReranker
+
+    settings = get_settings()
+    FastEmbedder(settings.embedding_model, settings.models_dir).embed_query("warm up")
+    CrossEncoderReranker(settings.reranker_model, settings.models_dir).score("warm", ["up"])
+    typer.echo(f"{settings.embedding_model}, {settings.reranker_model} -> {settings.models_dir}")
+
+
+@app.command()
+def setup(name: IndexName = "flask") -> None:
+    """Get a corpus ready: clone it, then download its index (or build it). Idempotent."""
+    settings = get_settings()
+    specs = corpus.load_specs(settings.corpora_file)
+    if name not in specs:
+        raise typer.BadParameter(f"unknown corpus {name!r}; choose from {sorted(specs)}")
+    spec = specs[name]
+    target = settings.corpora_dir / name
+    if not (target / ".git").exists() or corpus.current_ref(target) != spec.ref:
+        corpus_fetch(name)
+    if (settings.indexes_dir / name / "manifest.json").exists():
+        typer.echo(f"index {name} ready")
+        return
+    if spec.index_url and spec.index_sha256:
+        import urllib.error
+
+        try:
+            index_pull(name)
+            return
+        except (urllib.error.URLError, OSError) as error:  # offline, or the asset isn't up yet
+            typer.echo(f"couldn't download the prebuilt index ({error}); building it instead")
+    typer.echo(f"building the {name} index (embedding takes a while on CPU)")
+    ingest(name, None, True)
+
+
 @app.command()
 def search(
     index: IndexName,
@@ -191,6 +287,7 @@ def ask(
     stream: Annotated[bool, typer.Option(help="Print each event as JSON as it happens.")] = False,
     rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
     k: Annotated[int, typer.Option(help="Chunks to retrieve (--naive only).")] = 8,
+    plain: Annotated[bool, typer.Option(help="Plain text output (for scripts and logs).")] = False,
 ) -> None:
     """Answer a question with cited, verified claims. Calls the model API (spends credit)."""
     with _model_session(index) as (settings, llm, ws):
@@ -199,22 +296,37 @@ def ask(
 
             typer.echo(naive_answer(ws, question, llm, settings.heavy_model, k).render())
             return
-        from agentic_rag.agent.answer import answer_question
+        from agentic_rag.agent.answer import Answer, answer_question
 
-        answer = answer_question(
-            ws,
-            llm,
-            question,
-            cheap_model=settings.cheap_model,
-            heavy_model=settings.heavy_model,
-            budget=_budget(settings),
-            max_rounds=rounds,
-            sink=_print_event if stream else None,
-        )
+        def work(sink: "Callable[[Any], None] | None") -> Answer:
+            return answer_question(
+                ws,
+                llm,
+                question,
+                cheap_model=settings.cheap_model,
+                heavy_model=settings.heavy_model,
+                budget=_budget(settings),
+                max_rounds=rounds,
+                sink=sink,
+            )
+
+        if stream or plain:
+            answer = work(_print_event if stream else None)
+            if trace:
+                typer.echo(answer.exploration.render())
+                typer.echo("\n" + "=" * 72 + "\n")
+            typer.echo(answer.render())
+            return
+        from rich.console import Console
+
+        from agentic_rag import console as view
+
+        out = Console()
+        answer = view.run_with_status(out, work)
         if trace:
-            typer.echo(answer.exploration.render())
-            typer.echo("\n" + "=" * 72 + "\n")
-        typer.echo(answer.render())
+            out.print(view.trace_view(answer.exploration))
+            out.print()
+        out.print(view.answer_view(answer))
 
 
 @app.command()
@@ -222,6 +334,7 @@ def explore(
     index: IndexName,
     question: str,
     rounds: Annotated[int, typer.Option(help="Maximum planning rounds.")] = 3,
+    plain: Annotated[bool, typer.Option(help="Plain text output (for scripts and logs).")] = False,
 ) -> None:
     """Show the investigation only: route, plan, run, grade and check, round by round."""
     from agentic_rag.agent.explore import explore as run_explore
@@ -236,7 +349,14 @@ def explore(
             budget=_budget(settings),
             max_rounds=rounds,
         )
-        typer.echo(result.render())
+        if plain:
+            typer.echo(result.render())
+            return
+        from rich.console import Console
+
+        from agentic_rag.console import trace_view
+
+        Console().print(trace_view(result))
 
 
 def _print_event(event: "BaseModel") -> None:
